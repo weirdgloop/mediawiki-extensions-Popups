@@ -31,8 +31,9 @@ const CACHE_LIFETIME = 300;
  * @return {MediaWikiGateway}
  */
 export default function createMediaWikiApiGateway( api, config ) {
+	// WGL - Language variant support.
 	function fetch( title ) {
-		return api.get( {
+		const params = {
 			action: 'query',
 			prop: 'info|extracts|pageimages|revisions|info',
 			formatversion: 2,
@@ -54,12 +55,11 @@ export default function createMediaWikiApiGateway( api, config ) {
 			smaxage: CACHE_LIFETIME,
 			maxage: CACHE_LIFETIME,
 			uselang: 'content'
-		}, {
-			headers: {
-				'X-Analytics': 'preview=1',
-				'Accept-Language': config.acceptLanguage
-			}
-		} );
+		};
+		if ( mw.config.get( 'wgUserVariant' ) ) {
+			params.variant = mw.config.get( 'wgUserVariant' );
+		}
+		return api.get( params );
 	}
 
 	/**
