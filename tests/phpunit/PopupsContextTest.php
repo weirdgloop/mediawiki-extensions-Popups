@@ -19,7 +19,8 @@
  * @ingroup extensions
  */
 
-use MediaWiki\MediaWikiServices;
+use MediaWiki\Title\Title;
+use MediaWiki\User\UserOptionsLookup;
 use PHPUnit\Framework\MockObject\Stub\ConsecutiveCalls;
 use Popups\PopupsContext;
 use Popups\PopupsGadgetsIntegration;
@@ -50,12 +51,13 @@ class PopupsContextTest extends MediaWikiIntegrationTestCase {
 			$integration->method( 'conflictsWithNavPopupsGadget' )
 				->willReturn( false );
 		}
-		$userOptionsLookup = MediaWikiServices::getInstance()->getUserOptionsLookup();
+		$services = $this->getServiceContainer();
 		return new PopupsContext(
 			$config,
 			$registry,
 			$integration,
-			$userOptionsLookup
+			$services->getSpecialPageFactory(),
+			$services->getUserOptionsLookup()
 		);
 	}
 
@@ -73,7 +75,7 @@ class PopupsContextTest extends MediaWikiIntegrationTestCase {
 			'The previews opt-in is ' . ( $expected ? 'shown.' : 'hidden.' ) );
 	}
 
-	public function provideConfigForShowPreviewsInOptIn() {
+	public static function provideConfigForShowPreviewsInOptIn() {
 		return [
 			[
 				[
@@ -94,8 +96,8 @@ class PopupsContextTest extends MediaWikiIntegrationTestCase {
 	 * @covers ::shouldSendModuleToUser
 	 */
 	public function testShouldSendToAnonUser() {
-		$user = $this->getMutableTestUser()->getUser();
-		$user->setId( self::ANONYMOUS_USER );
+		$user = $this->createMock( User::class );
+		$user->method( 'getId' )->willReturn( self::ANONYMOUS_USER );
 
 		$context = $this->getContext();
 		$this->assertTrue(
@@ -118,16 +120,21 @@ class PopupsContextTest extends MediaWikiIntegrationTestCase {
 			'wgPopupsReferencePreviews' => false,
 		] );
 
+		$user = $this->createMock( User::class );
+		$user->method( 'isNamed' )->willReturn( true );
+		$userOptLookup = $this->createMock( UserOptionsLookup::class );
+		$userOptLookup->method( 'getBoolOption' )
+			->with( $user, PopupsContext::PREVIEWS_OPTIN_PREFERENCE_NAME )
+			->willReturn( $optIn );
+		$this->setService( 'UserOptionsLookup', $userOptLookup );
+
 		$context = $this->getContext();
-		$user = $this->getMutableTestUser()->getUser();
-		$userOptionsManager = MediaWikiServices::getInstance()->getUserOptionsManager();
-		$userOptionsManager->setOption( $user, PopupsContext::PREVIEWS_OPTIN_PREFERENCE_NAME, $optIn );
 		$this->assertSame( $expected,
 			$context->shouldSendModuleToUser( $user ),
 			( $expected ? 'A' : 'No' ) . ' module is sent to the user.' );
 	}
 
-	public function provideTestDataForShouldSendModuleToUser() {
+	public static function provideTestDataForShouldSendModuleToUser() {
 		return [
 			[
 				'optin' => PopupsContext::PREVIEWS_ENABLED,
@@ -157,8 +164,7 @@ class PopupsContextTest extends MediaWikiIntegrationTestCase {
 		$returnValues = [ $textExtracts, $pageImages ];
 
 		$mock = $this->createMock( ExtensionRegistry::class );
-		$mock->expects( $this->any() )
-			->method( 'isLoaded' )
+		$mock->method( 'isLoaded' )
 			->will( new ConsecutiveCalls( $returnValues ) );
 		$context = $this->getContext( $mock );
 		$this->assertSame( $expected,
@@ -166,7 +172,7 @@ class PopupsContextTest extends MediaWikiIntegrationTestCase {
 			'Dependencies are ' . ( $expected ? '' : 'not ' ) . 'met.' );
 	}
 
-	public function provideTestDataForTestAreDependenciesMet() {
+	public static function provideTestDataForTestAreDependenciesMet() {
 		return [
 			// Dependencies are met
 			[
@@ -214,7 +220,7 @@ class PopupsContextTest extends MediaWikiIntegrationTestCase {
 			'The title is' . ( $expected ? ' ' : ' not ' ) . 'excluded.' );
 	}
 
-	public function provideTestIsTitleExcluded() {
+	public static function provideTestIsTitleExcluded() {
 		$excludedPages = [ 'Special:Userlogin', 'Special:CreateAccount', 'User:A' ];
 		return [
 			[ $excludedPages, Title::newFromText( 'Main_Page' ), false ],
@@ -253,7 +259,7 @@ class PopupsContextTest extends MediaWikiIntegrationTestCase {
 	public function testConflictsWithNavPopupsGadget() {
 		$integrationMock = $this->createMock( PopupsGadgetsIntegration::class );
 
-		$user = $this->getTestUser()->getUser();
+		$user = $this->createMock( User::class );
 
 		$integrationMock->expects( $this->once() )
 			->method( 'conflictsWithNavPopupsGadget' )
@@ -302,11 +308,11 @@ class PopupsContextTest extends MediaWikiIntegrationTestCase {
 
 		$this->assertSame(
 			$expected,
-			$contextMock->getConfigBitmaskFromUser( $this->getTestUser()->getUser() )
+			$contextMock->getConfigBitmaskFromUser( $this->createMock( User::class ) )
 		);
 	}
 
-	public function provideTestGetConfigBitmaskFromUser() {
+	public static function provideTestGetConfigBitmaskFromUser() {
 		return [
 			[
 				true,

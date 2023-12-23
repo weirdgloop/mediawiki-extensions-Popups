@@ -19,9 +19,8 @@ export default function linkTitle() {
 	function destroyTitleAttr( el ) {
 		// Has the user dwelled on a link? If we've already removed its title attribute, then NOOP.
 		if ( el && !savedTitle ) {
-			const $el = $( el );
-			savedTitle = $el.attr( 'title' );
-			$el.attr( 'title', '' );
+			savedTitle = el.getAttribute( 'title' );
+			el.setAttribute( 'title', '' );
 		}
 	}
 
@@ -33,7 +32,7 @@ export default function linkTitle() {
 	function restoreTitleAttr( el ) {
 		// Avoid overwriting a non-empty title with an empty one, just to be sure
 		if ( el && savedTitle ) {
-			$( el ).attr( 'title', savedTitle );
+			el.setAttribute( 'title', savedTitle );
 			savedTitle = undefined;
 		}
 	}
@@ -47,6 +46,10 @@ export default function linkTitle() {
 		if ( oldLink !== newState.preview.activeLink ) {
 			restoreTitleAttr( oldLink );
 
+			// FIXME: This will not work on anything other than 'reference' or 'preview' types as
+			// mw.popups.register does not register the previewType as a key in newState.preview.enabled
+			// This is not a problem at time of writing (November 2022) but will become a problem if we
+			// introduce custom preview types that must remove the title attribute.
 			if ( newState.preview.enabled[ newState.preview.previewType ] ) {
 				destroyTitleAttr( newState.preview.activeLink );
 			}

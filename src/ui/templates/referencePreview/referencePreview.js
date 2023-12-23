@@ -1,7 +1,7 @@
 /**
  * @module referencePreview
  */
-
+import { isTrackingEnabled, LOGGING_SCHEMA } from '../../../instrumentation/referencePreviews';
 import { renderPopup } from '../popup/popup';
 import { createNodeFromTemplate, escapeHTML } from '../templateUtil';
 
@@ -10,10 +10,10 @@ const templateHTML = `
     <div class="mwe-popups-extract">
         <div class="mwe-popups-scroll">
             <strong class="mwe-popups-title">
-                <span class="mw-ui-icon mw-ui-icon-element"></span>
+                <span class="popups-icon"></span>
                 <span class="mwe-popups-title-placeholder"></span>
             </strong>
-            <div class="mw-parser-output"></div>
+            <bdi><div class="mw-parser-output"></div></bdi>
         </div>
         <div class="mwe-popups-fade"></div>
     </div>
@@ -22,18 +22,18 @@ const templateHTML = `
 	</footer>
 </div>`;
 
-const LOGGING_SCHEMA = 'event.ReferencePreviewsPopups';
-let isTracking = false;
-$( () => {
-	if ( mw.config.get( 'wgPopupsReferencePreviews' ) &&
-		navigator.sendBeacon &&
-		mw.config.get( 'wgIsArticle' ) &&
-		!isTracking
-	) {
-		isTracking = true;
-		mw.track( LOGGING_SCHEMA, { action: 'pageview' } );
+/**
+ * @param {HTMLElement} node
+ * @param {HTMLElement|string} htmlOrOtherNode
+ */
+const replaceWith = ( node, htmlOrOtherNode ) => {
+	if ( typeof htmlOrOtherNode === 'string' ) {
+		node.insertAdjacentHTML( 'afterend', htmlOrOtherNode );
+	} else {
+		node.parentNode.appendChild( htmlOrOtherNode );
 	}
-} );
+	node.remove();
+};
 
 /**
  * @param {ext.popups.ReferencePreviewModel} model
@@ -54,74 +54,89 @@ export function renderReferencePreview(
 		titleMsg = mw.message( 'popups-refpreview-reference' );
 	}
 
-	const $el = renderPopup( model.type, createNodeFromTemplate( templateHTML ) );
-	$el.find( '.mwe-popups-title-placeholder' )
-		.replaceWith( escapeHTML( titleMsg.text() ) );
+	const el = renderPopup( model.type, createNodeFromTemplate( templateHTML ) );
+	replaceWith( el.querySelector( '.mwe-popups-title-placeholder' ), escapeHTML( titleMsg.text() ) );
 	// The following classes are used here:
-	// * mw-ui-icon-reference-generic
-	// * mw-ui-icon-reference-book
-	// * mw-ui-icon-reference-journal
-	// * mw-ui-icon-reference-news
-	// * mw-ui-icon-reference-note
-	// * mw-ui-icon-reference-web
-	$el.find( '.mwe-popups-title .mw-ui-icon' )
-		.addClass( `mw-ui-icon-reference-${type}` );
-	$el.find( '.mw-parser-output' )
-		.html( model.extract );
+	// * popups-icon--reference-generic
+	// * popups-icon--reference-book
+	// * popups-icon--reference-journal
+	// * popups-icon--reference-news
+	// * popups-icon--reference-note
+	// * popups-icon--reference-web
+	el.querySelector( '.mwe-popups-title .popups-icon' )
+		.classList.add( `popups-icon--reference-${type}` );
+	el.querySelector( '.mw-parser-output' )
+		.innerHTML = model.extract;
 
 	// Make sure to not destroy existing targets, if any
-	$el.find( '.mwe-popups-extract a[href][class~="external"]:not([target])' ).each( ( i, a ) => {
-		a.target = '_blank';
-		// Don't let the external site access and possibly manipulate window.opener.location
-		a.rel = `${a.rel ? `${a.rel} ` : ''}noopener`;
-	} );
-
-	// We assume elements that benefit from being collapsible are to large for the popup
-	$el.find( '.mw-collapsible' ).replaceWith( $( '<div>' )
-		.addClass( 'mwe-collapsible-placeholder' )
-		.append(
-			$( '<span>' )
-				.addClass( 'mw-ui-icon mw-ui-icon-element mw-ui-icon-infoFilled' ),
-			$( '<div>' )
-				.addClass( 'mwe-collapsible-placeholder-label' )
-				.text( mw.msg( 'popups-refpreview-collapsible-placeholder' ) )
-		)
+	Array.prototype.forEach.call(
+		el.querySelectorAll( '.mwe-popups-extract a[href][class~="external"]:not([target])' ),
+		( a ) => {
+			a.target = '_blank';
+			// Don't let the external site access and possibly manipulate window.opener.location
+			a.rel = `${a.rel ? `${a.rel} ` : ''}noopener`;
+		}
 	);
 
+	// We assume elements that benefit from being collapsible are to large for the popup
+	Array.prototype.forEach.call( el.querySelectorAll( '.mw-collapsible' ), ( node ) => {
+		const otherNode = document.createElement( 'div' );
+		otherNode.classList.add( 'mwe-collapsible-placeholder' );
+		const icon = document.createElement( 'span' );
+		icon.classList.add( 'popups-icon', 'popups-icon--infoFilled' );
+		const label = document.createElement( 'span' );
+		label.classList.add( 'mwe-collapsible-placeholder-label' );
+		label.textContent = mw.msg( 'popups-refpreview-collapsible-placeholder' );
+		otherNode.appendChild( icon );
+		otherNode.appendChild( label );
+		replaceWith( node, otherNode );
+	} );
+
 	// Undo remaining effects from the jquery.tablesorter.js plugin
-	$el.find( 'table.sortable' ).removeClass( 'sortable jquery-tablesorter' )
-		.find( '.headerSort' ).removeClass( 'headerSort' ).attr( { tabindex: null, title: null } );
+	const undoHeaderSort = ( headerSort ) => {
+		headerSort.classList.remove( 'headerSort' );
+		headerSort.removeAttribute( 'tabindex' );
+		headerSort.removeAttribute( 'title' );
+	};
+	Array.prototype.forEach.call( el.querySelectorAll( 'table.sortable' ), ( node ) => {
+		node.classList.remove( 'sortable', 'jquery-tablesorter' );
+		Array.prototype.forEach.call( node.querySelectorAll( '.headerSort' ), undoHeaderSort );
+	} );
 
 	// TODO: Remove when not in Beta any more
 	if ( !mw.config.get( 'wgPopupsReferencePreviewsBetaFeature' ) ) {
 		// TODO: Do not remove this but move it up into the templateHTML constant!
-		$el.find( '.mwe-popups-settings' ).append(
-			$( '<a>' )
-				.addClass( 'mwe-popups-settings-icon' )
-				.append(
-					$( '<span>' )
-						.addClass( 'mw-ui-icon mw-ui-icon-element mw-ui-icon-small mw-ui-icon-settings' )
-				)
-		);
+		const settingsButton = document.createElement( 'a' );
+		settingsButton.classList.add( 'cdx-button', 'cdx-button--fake-button', 'cdx-button--fake-button--enabled', 'cdx-button--weight-quiet', 'cdx-button--icon-only', 'mwe-popups-settings-button' );
+		const settingsIcon = document.createElement( 'span' );
+		settingsIcon.classList.add( 'popups-icon', 'popups-icon--size-small', 'popups-icon--settings' );
+		const settingsButtonLabel = document.createElement( 'span' );
+		settingsButtonLabel.textContent = mw.msg( 'popups-settings-icon-gear-title' );
+		settingsButton.append( settingsIcon );
+		settingsButton.append( settingsButtonLabel );
+		el.querySelector( '.mwe-popups-settings' ).appendChild( settingsButton );
 	} else {
 		// Change the styling when there is no content in the footer (to prevent empty space)
-		$el.find( '.mwe-popups-container' ).addClass( 'footer-empty' );
+		el.querySelector( '.mwe-popups-container' ).classList.add( 'footer-empty' );
 	}
 
-	if ( isTracking ) {
-		$el.find( '.mw-parser-output' ).on( 'click', 'a', () => {
+	if ( isTrackingEnabled() ) {
+		el.querySelector( '.mw-parser-output' ).addEventListener( 'click', ( ev ) => {
+			if ( !ev.target.matches( 'a' ) ) {
+				return;
+			}
 			mw.track( LOGGING_SCHEMA, {
 				action: 'clickedReferencePreviewsContentLink'
 			} );
 		} );
 	}
 
-	$el.find( '.mwe-popups-scroll' ).on( 'scroll', function ( e ) {
+	el.querySelector( '.mwe-popups-scroll' ).addEventListener( 'scroll', function ( e ) {
 		const element = e.target,
 			// We are dealing with floating point numbers here when the page is zoomed!
 			scrolledToBottom = element.scrollTop >= element.scrollHeight - element.clientHeight - 1;
 
-		if ( isTracking ) {
+		if ( isTrackingEnabled() ) {
 			if ( !element.isOpenRecorded ) {
 				mw.track( LOGGING_SCHEMA, {
 					action: 'poppedOpen',
@@ -145,19 +160,19 @@ export function renderReferencePreview(
 			return;
 		}
 
-		const $extract = $( element ).parent(),
+		const extract = element.parentNode,
 			hasHorizontalScroll = element.scrollWidth > element.clientWidth,
 			scrollbarHeight = element.offsetHeight - element.clientHeight,
 			hasVerticalScroll = element.scrollHeight > element.clientHeight,
 			scrollbarWidth = element.offsetWidth - element.clientWidth;
-		$extract.find( '.mwe-popups-fade' ).css( {
-			bottom: hasHorizontalScroll ? `${scrollbarHeight}px` : 0,
-			right: hasVerticalScroll ? `${scrollbarWidth}px` : 0
-		} );
+		const fade = extract.querySelector( '.mwe-popups-fade' );
+		fade.style.bottom = hasHorizontalScroll ? `${scrollbarHeight}px` : 0;
+		fade.style.right = hasVerticalScroll ? `${scrollbarWidth}px` : 0;
 
 		element.isScrolling = !scrolledToBottom;
-		$extract.toggleClass( 'mwe-popups-fade-out', element.isScrolling );
+		extract.classList.toggle( 'mwe-popups-fade-out', element.isScrolling );
+		extract.setAttribute( 'lang', mw.config.get( 'wgPageContentLanguage' ) );
 	} );
 
-	return $el;
+	return el;
 }

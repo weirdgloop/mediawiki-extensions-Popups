@@ -3,7 +3,7 @@
  */
 
 import { renderPopup } from '../popup/popup';
-import { createNodeFromTemplate } from '../templateUtil';
+import { escapeHTML, createNodeFromTemplate } from '../templateUtil';
 
 const defaultExtractWidth = 215;
 const templateHTML = `
@@ -11,8 +11,9 @@ const templateHTML = `
     <a class="mwe-popups-discreet"></a>
     <a class="mwe-popups-extract"></a>
     <footer>
-        <a class="mwe-popups-settings-icon">
-            <span class="mw-ui-icon mw-ui-icon-element mw-ui-icon-small mw-ui-icon-settings"></span>
+		<a class="cdx-button cdx-button--fake-button cdx-button--fake-button--enabled cdx-button--weight-quiet cdx-button--icon-only mwe-popups-settings-button">
+			<span class="popups-icon popups-icon--size-small popups-icon--settings"></span>
+			<span class="mwe-popups-settings-button-label"></span>
         </a>
     </footer>
 </div>
@@ -23,40 +24,48 @@ const templateHTML = `
  * @param {ext.popups.Thumbnail|null} thumbnail
  * @param {boolean} withCSSClipPath
  * @param {string} linkTitle
- * @return {JQuery}
+ * @return {Element}
  */
 export function renderPagePreview(
 	model, thumbnail, withCSSClipPath, linkTitle
 ) {
-	const $el = renderPopup( model.type, createNodeFromTemplate( templateHTML ) );
+	const el = renderPopup( model.type, createNodeFromTemplate( templateHTML ) );
 
-	$el.find( '.mwe-popups-discreet, .mwe-popups-extract' )
-		.attr( 'href', model.url );
+	const linkDiscreet = el.querySelector( '.mwe-popups-discreet' );
+	const extract = el.querySelector( '.mwe-popups-extract' );
+	extract.setAttribute( 'href', model.url );
+	linkDiscreet.setAttribute( 'href', model.url );
+	extract.setAttribute( 'dir', model.languageDirection );
+	extract.setAttribute( 'lang', model.languageCode );
 
-	$el.find( '.mwe-popups-extract' )
-		.attr( 'dir', model.languageDirection )
-		.attr( 'lang', model.languageCode );
+	el.querySelector( '.mwe-popups-settings-button' )
+		.setAttribute( 'title', linkTitle );
 
-	$el.find( '.mwe-popups-settings-icon' )
-		.attr( 'title', linkTitle );
+	// Set label on settings icon button
+	const labelText = escapeHTML( mw.msg( 'popups-settings-icon-gear-title' ) );
+	const label = el.querySelector( '.mwe-popups-settings-button-label' );
+	label.textContent = labelText;
 
 	if ( thumbnail ) {
-		$el.find( '.mwe-popups-discreet' ).append( thumbnail.el );
+		el.querySelector( '.mwe-popups-discreet' ).appendChild( thumbnail.el );
 	} else {
-		$el.find( '.mwe-popups-discreet' ).remove();
+		linkDiscreet.remove();
 	}
 
-	const $extract = $el.find( '.mwe-popups-extract' );
 	if ( model.extract ) {
-		$extract.append( model.extract );
+		if ( typeof model.extract === 'string' ) {
+			extract.innerHTML = model.extract;
+		} else {
+			extract.append( ...model.extract );
+		}
 		const extractWidth = getExtractWidth( thumbnail );
 		if ( !withCSSClipPath ) {
-			$extract.css( 'width', extractWidth );
-			$el.find( 'footer' ).css( 'width', extractWidth );
+			extract.style.width = extractWidth;
+			el.querySelector( 'footer' ).style.width = extractWidth;
 		}
 	}
 
-	return $el;
+	return el;
 }
 
 export { defaultExtractWidth }; // for testing

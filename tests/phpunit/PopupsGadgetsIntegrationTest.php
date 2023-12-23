@@ -27,7 +27,7 @@ use Popups\PopupsGadgetsIntegration;
  * @group Popups
  * @coversDefaultClass \Popups\PopupsGadgetsIntegration
  */
-class PopupsGadgetsIntegrationTest extends MediaWikiUnitTestCase {
+class PopupsGadgetsIntegrationTest extends MediaWikiIntegrationTestCase {
 
 	/**
 	 * Gadget name for testing
@@ -59,8 +59,7 @@ class PopupsGadgetsIntegrationTest extends MediaWikiUnitTestCase {
 	 */
 	private function getExtensionRegistryMock( $gadgetsEnabled ) {
 		$mock = $this->createMock( ExtensionRegistry::class );
-		$mock->expects( $this->any() )
-			->method( 'isLoaded' )
+		$mock->method( 'isLoaded' )
 			->with( 'Gadgets' )
 			->willReturn( $gadgetsEnabled );
 		return $mock;
@@ -198,7 +197,7 @@ class PopupsGadgetsIntegrationTest extends MediaWikiUnitTestCase {
 			self::GADGET_ENABLED );
 	}
 
-	public function provideGadgetNamesWithSanitizedVersion() {
+	public static function provideGadgetNamesWithSanitizedVersion() {
 		return [
 			[ ' Popups ', 'Popups' ],
 			[ 'Navigation_popups-API', 'Navigation_popups-API' ],

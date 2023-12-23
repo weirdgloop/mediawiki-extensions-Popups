@@ -1,6 +1,7 @@
 /**
  * @module isReferencePreviewsEnabled
  */
+const canSaveToUserPreferences = require( './canSaveToUserPreferences.js' );
 
 /**
  * Given the global state of the application, creates a function that gets
@@ -21,6 +22,7 @@ export default function isReferencePreviewsEnabled( user, userSettings, config )
 
 	// T265872: Unavailable when in conflict with (one of the) reference tooltips gadgets.
 	if ( config.get( 'wgPopupsConflictsWithRefTooltipsGadget' ) ||
+		config.get( 'wgPopupsConflictsWithNavPopupGadget' ) ||
 		// T243822: Temporarily disabled in the mobile skin
 		config.get( 'skin' ) === 'minerva'
 	) {
@@ -29,7 +31,7 @@ export default function isReferencePreviewsEnabled( user, userSettings, config )
 
 	// For anonymous users, the code loads always, but the feature can be toggled at run-time via
 	// local storage.
-	if ( user.isAnon() ) {
+	if ( !canSaveToUserPreferences( user ) ) {
 		return userSettings.isReferencePreviewsEnabled();
 	}
 

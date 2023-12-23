@@ -7,7 +7,8 @@ const
 	Api = require( 'wdio-mediawiki/Api' ),
 	Page = require( 'wdio-mediawiki/Page' ),
 	Util = require( 'wdio-mediawiki/Util' ),
-	TEST_PAGE_TITLE = 'Popups test page',
+	TEST_PAGE_POPUPS_TITLE = 'Page popups test page',
+	TEST_REFERENCE_POPUPS_TITLE = 'Reference popups test page',
 	POPUPS_SELECTOR = '.mwe-popups',
 	PAGE_POPUPS_SELECTOR = '.mwe-popups-type-page',
 	PAGE_POPUPS_LINK_SELECTOR = '.mw-body-content ul a',
@@ -15,120 +16,128 @@ const
 	REFERENCE_INCEPTION_LINK_SELECTOR = '.mwe-popups-type-reference .reference a',
 	POPUPS_MODULE_NAME = 'ext.popups.main';
 
-function makePage( title, path ) {
-	return new Promise( ( resolve ) => {
-		fs.readFile( path, 'utf-8', ( err, content ) => {
-			if ( err ) {
-				throw err;
-			}
-			resolve( content );
-		} );
-	} ).then( async ( content ) => {
-		const bot = await Api.bot();
-		await bot.edit( title, content );
-	} );
+async function makePage( title, path ) {
+	const content = fs.readFileSync( path, 'utf-8' );
+	const bot = await Api.bot();
+	await bot.edit( title, content );
 }
 class PopupsPage extends Page {
-	setup() {
-		browser.call( () => {
+	async setupPagePreviews() {
+		return browser.call( async () => {
 			const path = `${__dirname}/../fixtures/`;
-			// FIXME: Cannot use Promise.all as wdio-mediawiki/Api will trigger a bad
-			// token error.
-			return makePage( `${TEST_PAGE_TITLE} 2`, `${path}/test_page_2.wikitext` ).then( () => {
-				return makePage( TEST_PAGE_TITLE, `${path}test_page.wikitext` );
-			} );
+			await makePage( `${TEST_PAGE_POPUPS_TITLE} 2`, `${path}test_page_2.wikitext` );
+			await makePage( TEST_PAGE_POPUPS_TITLE, `${path}test_page.wikitext` );
 		} );
 	}
 
-	ready() {
-		Util.waitForModuleState( POPUPS_MODULE_NAME );
+	async setupReferencePreviews() {
+		return browser.call( async () => {
+			const path = `${__dirname}/../fixtures/`;
+			await makePage( TEST_REFERENCE_POPUPS_TITLE, `${path}test_page.wikitext` );
+		} );
 	}
 
-	shouldUseReferencePopupsBetaFeature( shouldUse ) {
-		Util.waitForModuleState( 'mediawiki.base' );
-		return browser.execute( function ( use ) {
+	async ready() {
+		await Util.waitForModuleState( POPUPS_MODULE_NAME );
+	}
+
+	async shouldUseReferencePopupsBetaFeature() {
+		await Util.waitForModuleState( 'mediawiki.base' );
+		await browser.execute( function () {
 			return mw.loader.using( 'mediawiki.api' ).then( function () {
 				return new mw.Api().saveOptions( {
 					// TODO: Remove the first option when all Beta code is gone
-					popupsreferencepreviews: use ? '1' : '0',
-					'popups-reference-previews': use ? '1' : '0'
+					popupsreferencepreviews: '1',
+					'popups-reference-previews': '1'
 				} );
 			} );
-		}, shouldUse );
+		} );
 	}
 
-	hasReferencePopupsEnabled() {
+	async hasReferencePopupsEnabled() {
 		// TODO Remove or adjust when not in Beta any more
 		return browser.execute( () => mw.config.get( 'wgPopupsReferencePreviews' ) );
 	}
 
-	abandonLink() {
-		$( '#content h1' ).moveTo();
+	async abandonLink() {
+		return $( '#content h1' ).moveTo();
 	}
 
-	dwellLink( selector ) {
-		$( selector ).moveTo();
-		$( POPUPS_SELECTOR ).waitForExist();
+	async dwellLink( selector, doesNotTriggerPreview ) {
+		await $( selector ).moveTo();
+		if ( !doesNotTriggerPreview ) {
+			await $( POPUPS_SELECTOR ).waitForExist();
+		} else {
+			await browser.pause( 1000 );
+		}
 	}
 
-	dwellPageLink() {
-		this.dwellLink( PAGE_POPUPS_LINK_SELECTOR );
+	async dwellPageLink() {
+		await this.dwellLink( PAGE_POPUPS_LINK_SELECTOR );
 	}
 
-	hoverPageLink() {
-		$( PAGE_POPUPS_LINK_SELECTOR ).moveTo();
+	async dwellPageFragment() {
+		await this.dwellLink( '[href="#section"]', true );
 	}
 
-	dwellReferenceLink( num ) {
-		this.dwellLink( `.reference:nth-of-type(${num}) a` );
+	async hoverPageLink() {
+		await $( PAGE_POPUPS_LINK_SELECTOR ).moveTo();
 	}
 
-	dwellReferenceInceptionLink() {
-		$( REFERENCE_INCEPTION_LINK_SELECTOR ).moveTo();
-		browser.pause( 1000 );
+	async dwellReferenceLink( id ) {
+		await this.dwellLink( `#${id} a` );
 	}
 
-	doNotSeePreview( selector ) {
-		return browser.waitUntil( () => !$( selector ).isDisplayed() );
+	async dwellReferenceInceptionLink() {
+		await $( REFERENCE_INCEPTION_LINK_SELECTOR ).moveTo();
+		await browser.pause( 1000 );
 	}
 
-	doNotSeePagePreview() {
+	async doNotSeePreview( selector ) {
+		return browser.waitUntil( async () => !( await $( selector ).isDisplayed() ) );
+	}
+
+	async doNotSeePagePreview() {
 		return this.doNotSeePreview( PAGE_POPUPS_SELECTOR );
 	}
 
-	doNotSeeReferencePreview() {
+	async doNotSeeReferencePreview() {
 		return this.doNotSeePreview( REFERENCE_POPUPS_SELECTOR );
 	}
 
-	seePreview( selector ) {
-		return $( selector ).isDisplayed();
+	async seePreview( selector ) {
+		return await $( selector ).isDisplayed();
 	}
 
-	seePagePreview() {
-		return this.seePreview( PAGE_POPUPS_SELECTOR );
+	async seePagePreview() {
+		return await this.seePreview( PAGE_POPUPS_SELECTOR );
 	}
 
-	seeReferencePreview() {
-		return this.seePreview( REFERENCE_POPUPS_SELECTOR );
+	async seeReferencePreview() {
+		return await this.seePreview( REFERENCE_POPUPS_SELECTOR );
 	}
 
-	seeReferenceInceptionPreview() {
-		return this.seePreview( REFERENCE_INCEPTION_LINK_SELECTOR );
+	async seeReferenceInceptionPreview() {
+		return await this.seePreview( REFERENCE_INCEPTION_LINK_SELECTOR );
 	}
 
-	seeScrollableReferencePreview() {
+	async seeScrollableReferencePreview() {
 		return browser.execute( () => {
 			const el = document.querySelector( '.mwe-popups-extract .mwe-popups-scroll' );
 			return el.scrollHeight > el.offsetHeight;
 		} );
 	}
 
-	seeFadeoutOnReferenceText() {
+	async seeFadeoutOnReferenceText() {
 		return $( '.mwe-popups-fade-out' ).isExisting();
 	}
 
-	open() {
-		super.openTitle( TEST_PAGE_TITLE );
+	async openPagePopupsTest() {
+		return super.openTitle( TEST_PAGE_POPUPS_TITLE );
+	}
+
+	async openReferencePopupsTest() {
+		return super.openTitle( TEST_REFERENCE_POPUPS_TITLE );
 	}
 
 }

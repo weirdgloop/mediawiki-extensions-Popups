@@ -21,13 +21,17 @@
 namespace Popups;
 
 use Config;
+use ExtensionRegistry;
 use MediaWiki\Auth\Hook\LocalUserCreatedHook;
 use MediaWiki\Hook\BeforePageDisplayHook;
 use MediaWiki\Hook\MakeGlobalVariablesScriptHook;
 use MediaWiki\MediaWikiServices;
 use MediaWiki\Preferences\Hook\GetPreferencesHook;
 use MediaWiki\ResourceLoader\Hook\ResourceLoaderGetConfigVarsHook;
+use MediaWiki\ResourceLoader\Hook\ResourceLoaderRegisterModulesHook;
+use MediaWiki\ResourceLoader\ResourceLoader;
 use MediaWiki\User\Hook\UserGetDefaultOptionsHook;
+use MediaWiki\User\UserOptionsManager;
 use OutputPage;
 use Skin;
 use User;
@@ -41,12 +45,35 @@ class PopupsHooks implements
 	GetPreferencesHook,
 	BeforePageDisplayHook,
 	ResourceLoaderGetConfigVarsHook,
+	ResourceLoaderRegisterModulesHook,
 	MakeGlobalVariablesScriptHook,
 	UserGetDefaultOptionsHook,
 	LocalUserCreatedHook
 {
 
 	private const PREVIEWS_PREFERENCES_SECTION = 'rendering/reading';
+
+	/** @var UserOptionsManager */
+	private $userOptionsManager;
+
+	/**
+	 * @param UserOptionsManager $userOptionsManager
+	 */
+	public function __construct(
+		UserOptionsManager $userOptionsManager
+	) {
+		$this->userOptionsManager = $userOptionsManager;
+	}
+
+	/**
+	 * Get custom Popups types registered by extensions
+	 * @return array
+	 */
+	public static function getCustomPopupTypes(): array {
+		return ExtensionRegistry::getInstance()->getAttribute(
+			'PopupsPluginModules'
+		);
+	}
 
 	/**
 	 * Add options to user Preferences page
@@ -215,9 +242,8 @@ class PopupsHooks implements
 	 * @param \IContextSource $out OutputPage instance calling the hook
 	 */
 	public function onMakeGlobalVariablesScript( &$vars, $out ): void {
-		$services = MediaWikiServices::getInstance();
 		/** @var PopupsContext $context */
-		$context = $services->getService( 'Popups.Context' );
+		$context = MediaWikiServices::getInstance()->getService( 'Popups.Context' );
 		$vars['wgPopupsFlags'] = $context->getConfigBitmaskFromUser( $out->getUser() );
 	}
 
@@ -249,11 +275,9 @@ class PopupsHooks implements
 	 */
 	public function onLocalUserCreated( $user, $isAutoCreated ) {
 		/** @var Config $config */
-		$services = MediaWikiServices::getInstance();
-		$config = $services->getService( 'Popups.Config' );
+		$config = MediaWikiServices::getInstance()->getService( 'Popups.Config' );
 		$default = $config->get( 'PopupsOptInStateForNewAccounts' );
-		$userOptionsManager = $services->getUserOptionsManager();
-		$userOptionsManager->setOption(
+		$this->userOptionsManager->setOption(
 			$user,
 			PopupsContext::PREVIEWS_OPTIN_PREFERENCE_NAME,
 			$default
@@ -264,7 +288,7 @@ class PopupsHooks implements
 		if ( $config->get( 'PopupsReferencePreviews' ) &&
 			!$config->get( 'PopupsReferencePreviewsBetaFeature' )
 		) {
-			$userOptionsManager->setOption(
+			$this->userOptionsManager->setOption(
 				$user,
 				PopupsContext::REFERENCE_PREVIEWS_PREFERENCE_NAME_AFTER_BETA,
 				$default
@@ -299,4 +323,25 @@ class PopupsHooks implements
 		}
 	}
 
+	/**
+	 * ResourceLoaderRegisterModules hook handler.
+	 *
+	 * Provides support for MLEB where needed.
+	 *
+	 * @see https://www.mediawiki.org/wiki/Manual:Hooks/ResourceLoaderRegisterModules
+	 *
+	 * @param ResourceLoader $resourceLoader
+	 */
+	public function onResourceLoaderRegisterModules( ResourceLoader $resourceLoader ): void {
+		if ( !$resourceLoader->getModule( 'codex-search-styles' ) ) {
+			// We're running an older version of MediaWiki.
+			$resourceLoader->register( [
+				'codex-search-styles' => [
+					'localBasePath' => dirname( __DIR__ ),
+					'remoteExtPath' => 'UniversalLanguageSelector',
+					'styles' => 'resources/codex.mleb.css',
+				]
+			] );
+		}
+	}
 }

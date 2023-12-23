@@ -7,10 +7,13 @@ import { createNodeFromTemplate, escapeHTML } from '../templateUtil';
 
 const templateHTML = `
 	<div class="mwe-popups-container">
-		<div class="mw-ui-icon mw-ui-icon-element"></div>
-		<strong class="mwe-popups-title"></strong>
 		<a class="mwe-popups-extract">
-			<span class="mwe-popups-message"></span>
+       		<div class="mwe-popups-scroll">
+				<strong class="mwe-popups-title">
+					<span class="popups-icon"></span>
+				</strong>
+				<div class="mwe-popups-message"></div>
+			</div>
 		</a>
 		<footer>
 			<a class="mwe-popups-read-link"></a>
@@ -19,33 +22,34 @@ const templateHTML = `
 `;
 
 /**
+ * Render generic and disambiguation previews
+ *
  * @param {ext.popups.PagePreviewModel} model
- * @param {boolean} showTitle
- * @param {string} extractMsg
+ * @param {string|null} message
  * @param {string} linkMsg
  * @return {JQuery}
  */
 export function renderPreview(
-	model, showTitle, extractMsg, linkMsg
+	model, message, linkMsg
 ) {
-	const $popup = renderPopup( model.type, createNodeFromTemplate( templateHTML ) );
+	const popup = renderPopup( model.type, createNodeFromTemplate( templateHTML ) );
 
 	// The following classes are used here:
-	// * mw-icon-preview-reference
-	// * mw-icon-preview-unknown
-	// * mw-icon-preview-generic
-	// * mw-icon-preview-disambiguation
-	$popup.find( '.mw-ui-icon ' ).addClass( `mw-ui-icon-preview-${model.type}` );
-	$popup.find( '.mwe-popups-extract' ).attr( 'href', model.url );
-	$popup.find( '.mwe-popups-message' ).html( escapeHTML( extractMsg ) );
-	$popup.find( '.mwe-popups-read-link' )
-		.html( escapeHTML( linkMsg ) )
-		.attr( 'href', model.url );
-	if ( showTitle ) {
-		$popup.find( '.mwe-popups-title' ).html( escapeHTML( model.title ) );
+	// * popups-icon--preview-unknown
+	// * popups-icon--preview-generic
+	// * popups-icon--preview-disambiguation
+	popup.querySelector( '.popups-icon' ).classList.add( `popups-icon--preview-${model.type}` );
+	popup.querySelector( '.mwe-popups-extract' ).setAttribute( 'href', model.url );
+	const messageElement = popup.querySelector( '.mwe-popups-message' );
+	if ( message ) {
+		messageElement.innerHTML = escapeHTML( message );
 	} else {
-		$popup.find( '.mwe-popups-title' ).remove();
+		messageElement.remove();
 	}
-
-	return $popup;
+	const readLink = popup.querySelector( '.mwe-popups-read-link' );
+	readLink.innerHTML = escapeHTML( linkMsg );
+	readLink.setAttribute( 'href', model.url );
+	const title = popup.querySelector( '.mwe-popups-title' );
+	title.innerHTML += escapeHTML( model.title );
+	return popup;
 }

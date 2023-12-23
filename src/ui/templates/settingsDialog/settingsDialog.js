@@ -44,7 +44,7 @@ function escapeChoices( choices = [] ) {
 
 /**
  * @param {SettingsModel} model
- * @return {JQuery}
+ * @return {Element}
  */
 export function renderSettingsDialog( model ) {
 	const heading = escapeHTML( model.heading ),
@@ -53,16 +53,20 @@ export function renderSettingsDialog( model ) {
 		helpText = escapeHTML( model.helpText ),
 		okLabel = escapeHTML( model.okLabel ),
 		choices = escapeChoices( model.choices );
-	return $( $.parseHTML( `
+	const node = document.createElement( 'div' );
+	node.innerHTML = `
 		<section id='mwe-popups-settings'>
 			<header>
 				<div>
-					<div class='mw-ui-icon mw-ui-icon-element mw-ui-icon-popups-close close'>${closeLabel}</div>
+					<button class='cdx-button cdx-button--weight-quiet cdx-button--icon-only'>
+						<span class='popups-icon popups-icon--close close'></span>
+						<span>${closeLabel}</span>
+					</button>
 				</div>
 				<h1>${heading}</h1>
 				<div>
-					<button class='save mw-ui-button mw-ui-progressive'>${saveLabel}</button>
-					<button class='okay mw-ui-button mw-ui-progressive' style='display:none;'>${okLabel}</button>
+					<button class='save cdx-button cdx-button--weight-primary cdx-button--action-progressive'>${saveLabel}</button>
+					<button class='okay cdx-button cdx-button--weight-primary cdx-button--action-progressive' style='display:none;'>${okLabel}</button>
 				</div>
 			</header>
 			<main id='mwe-popups-settings-form'>
@@ -82,9 +86,10 @@ export function renderSettingsDialog( model ) {
 				</form>
 			</main>
 			<div class='mwe-popups-settings-help' style='display:none;'>
-				<div class="mw-ui-icon mw-ui-icon-element mw-ui-icon-footer"></div>
+				<div class="popups-icon popups-icon--footer"></div>
 				<p>${helpText}</p>
 			</div>
 		</section>
-	`.trim() ) );
+	`.trim();
+	return node.querySelector( 'section' );
 }

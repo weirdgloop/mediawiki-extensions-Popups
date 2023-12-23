@@ -16,9 +16,25 @@
  * that is abortable.
  *
  * @template T
- * @typedef {JQuery.Promise<T>} AbortPromise
+ * @typedef {Promise<T>} AbortPromise
  * @property {function(): void} abort
  */
+
+/**
+ * @param {Promise|jQuery.Promise<T>} promise
+ * @param {function(): void} [abort]
+ * @return {AbortPromise}
+ */
+export function abortablePromise( promise, abort = () => {} ) {
+	// JQuery provided.
+	if ( promise.promise ) {
+		return promise.promise( {
+			abort
+		} );
+	}
+	promise.abort = abort;
+	return promise;
+}
 
 /**
  * Fetches a preview for a page or reference.
@@ -34,3 +50,23 @@
  *
  * @typedef {function(Object, ...any): PagePreviewModel} ConvertPageToModel
  */
+
+const gatewayMap = {};
+
+/**
+ * @param {string} type Type of preview we are handling
+ * @return {Gateway|undefined}
+ */
+export function getGatewayForPreviewType( type ) {
+	return gatewayMap[ type ];
+}
+
+/**
+ * Register a gateway for a given preview type.
+ *
+ * @param {string} type preview type
+ * @param {Gateway} gateway
+ */
+export function registerGatewayForPreviewType( type, gateway ) {
+	gatewayMap[ type ] = gateway;
+}
