@@ -22,6 +22,7 @@
 		"BeforePageDisplay": "PopupsHooks",
 		"ResourceLoaderGetConfigVars": "PopupsHooks",
 		"GetPreferences": "PopupsHooks",
+		"HtmlCacheUpdaterAppendUrls": "PopupsHooks",
 		"MakeGlobalVariablesScript": "PopupsHooks"
 	},
 	"HookHandlers": {
