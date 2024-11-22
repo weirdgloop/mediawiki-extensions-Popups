@@ -20,8 +20,11 @@
  */
 namespace Popups;
 
+use MediaWiki\Cache\HTMLCacheUpdater;
+use MediaWiki\Cache\Hook\HtmlCacheUpdaterAppendUrlsHook;
 use MediaWiki\Config\Config;
 use MediaWiki\Context\IContextSource;
+use MediaWiki\MediaWikiServices;
 use MediaWiki\Output\Hook\BeforePageDisplayHook;
 use MediaWiki\Output\Hook\MakeGlobalVariablesScriptHook;
 use MediaWiki\Output\OutputPage;
@@ -29,6 +32,7 @@ use MediaWiki\Preferences\Hook\GetPreferencesHook;
 use MediaWiki\Registration\ExtensionRegistry;
 use MediaWiki\ResourceLoader\Hook\ResourceLoaderGetConfigVarsHook;
 use MediaWiki\Skin\Skin;
+use MediaWiki\Title\Title;
 use MediaWiki\User\Options\UserOptionsManager;
 use MediaWiki\User\User;
 use Psr\Log\LoggerInterface;
@@ -41,6 +45,7 @@ use Psr\Log\LoggerInterface;
 class PopupsHooks implements
 	GetPreferencesHook,
 	BeforePageDisplayHook,
+	HtmlCacheUpdaterAppendUrlsHook,
 	ResourceLoaderGetConfigVarsHook,
 	MakeGlobalVariablesScriptHook
 {
@@ -169,5 +174,51 @@ class PopupsHooks implements
 	 */
 	public function onMakeGlobalVariablesScript( &$vars, $out ): void {
 		$vars['wgPopupsFlags'] = $this->popupsContext->getConfigBitmaskFromUser( $out->getUser() );
+	}
+
+	/**
+	 * Build the API URL used in the src/gateway/mediawiki.js call
+	 * @param bool $exIntro
+	 * @param int $thumbSize
+	 * @param string $page
+	 * @return string
+	 */
+	private function buildApiUrl( string $exIntro, int $thumbSize, string $page): string {
+		$apiUrl = (string)MediaWikiServices::getInstance()->getUrlUtils()->expand( wfScript( 'api' ) );
+		return $apiUrl . "?action=query&format=json&prop=info%7Cextracts%7Cpageimages%7Crevisions%7Cinfo&formatversion=2&redirects=true&exintro=$exIntro&exchars=525&explaintext=true&exsectionformat=plain&piprop=thumbnail&pithumbsize=$thumbSize&pilicense=any&rvprop=timestamp&inprop=url&titles=$page&smaxage=300&maxage=300&uselang=content";
+	}
+
+	/**
+	 * Purge the API URLs we're requesting when the page changes.
+	 *
+	 * @param Title $title
+	 * @param int $mode
+	 * @param array[] $append
+	 */
+	public function onHtmlCacheUpdaterAppendUrls( $title, $mode, &$append ) {
+		// Do not run for links updates, as it would create a lot of unnecessary purges
+		if ( $mode === HTMLCacheUpdater::PURGE_URLS_LINKSUPDATE_ONLY ) {
+			return null;
+		}
+
+		// Do not run for any Title that the extension is not running on
+		/** @var PopupsContext $context */
+		$context = MediaWikiServices::getInstance()->getService( 'Popups.Context' );
+		if ( $context->isTitleExcluded( $title ) ) {
+			return null;
+		}
+
+		/** @var Config $config */
+		$config = MediaWikiServices::getInstance()->getService( 'Popups.Config' );
+
+		// Check we're using the PageExtracts API
+		if ( $config->get( 'PopupsGateway' ) === 'mwApiPlain' ) {
+			$exintro = $config->get( 'PopupsTextExtractsIntroOnly' ) ? 'true' : 'false';
+			$page = $title->getPrefixedDBkey();
+
+			// Append all possible extract API URLs, based on values in src/bracketedPixelRatio.js
+			$append[] = self::buildApiUrl( $exintro, 480, $page );
+			$append[] = self::buildApiUrl( $exintro, 640, $page );
+		}
 	}
 }
