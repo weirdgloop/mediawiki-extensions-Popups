@@ -25,7 +25,8 @@
 		"UserGetDefaultOptions": "PopupsHooks",
 		"MakeGlobalVariablesScript": "PopupsHooks",
 		"LocalUserCreated": "PopupsHooks",
-		"GetBetaFeaturePreferences": "PopupsHooks"
+		"GetBetaFeaturePreferences": "PopupsHooks",
+		"HtmlCacheUpdaterAppendUrls": "PopupsHooks"
 	},
 	"HookHandlers": {
 		"PopupsHooks": {

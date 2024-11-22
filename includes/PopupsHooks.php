@@ -28,11 +28,14 @@ use MediaWiki\Hook\MakeGlobalVariablesScriptHook;
 use MediaWiki\MediaWikiServices;
 use MediaWiki\Preferences\Hook\GetPreferencesHook;
 use MediaWiki\ResourceLoader\Hook\ResourceLoaderGetConfigVarsHook;
+use MediaWiki\Title\Title;
 use MediaWiki\User\Hook\UserGetDefaultOptionsHook;
 use MediaWiki\User\UserOptionsManager;
 use OutputPage;
 use Skin;
 use User;
+use HtmlCacheUpdater;
+use MediaWiki\Cache\Hook\HtmlCacheUpdaterAppendUrlsHook;
 
 /**
  * Hooks definitions for Popups extension
@@ -45,7 +48,8 @@ class PopupsHooks implements
 	ResourceLoaderGetConfigVarsHook,
 	MakeGlobalVariablesScriptHook,
 	UserGetDefaultOptionsHook,
-	LocalUserCreatedHook
+	LocalUserCreatedHook,
+	HtmlCacheUpdaterAppendUrlsHook
 {
 
 	private const PREVIEWS_PREFERENCES_SECTION = 'rendering/reading';
@@ -317,6 +321,52 @@ class PopupsHooks implements
 				'info-link' => 'https://mediawiki.org/wiki/Help:Reference_Previews',
 				'discussion-link' => 'https://mediawiki.org/wiki/Help_Talk:Reference_Previews',
 			];
+		}
+	}
+
+	/**
+	 * Build the API URL used in the src/gateway/mediawiki.js call
+	 * @param bool $exIntro
+	 * @param int $thumbSize
+	 * @param string $page
+	 * @return string
+	 */
+	private function buildApiUrl( string $exIntro, int $thumbSize, string $page): string {
+		$apiUrl = (string)MediaWikiServices::getInstance()->getUrlUtils()->expand( wfScript( 'api' ) );
+		return $apiUrl . "?action=query&format=json&prop=info%7Cextracts%7Cpageimages%7Crevisions%7Cinfo&formatversion=2&redirects=true&exintro=$exIntro&exchars=525&explaintext=true&exsectionformat=plain&piprop=thumbnail&pithumbsize=$thumbSize&pilicense=any&rvprop=timestamp&inprop=url&titles=$page&smaxage=300&maxage=300&uselang=content";
+	}
+
+	/**
+	 * Purge the API URLs we're requesting when the page changes.
+	 *
+	 * @param Title $title
+	 * @param int $mode
+	 * @param array[] $append
+	 */
+	public function onHtmlCacheUpdaterAppendUrls( $title, $mode, &$append ) {
+		// Do not run for links updates, as it would create a lot of unnecessary purges
+		if ( $mode === HtmlCacheUpdater::PURGE_URLS_LINKSUPDATE_ONLY ) {
+			return null;
+		}
+
+		// Do not run for any Title that the extension is not running on
+		/** @var PopupsContext $context */
+		$context = MediaWikiServices::getInstance()->getService( 'Popups.Context' );
+		if ( $context->isTitleExcluded( $title ) ) {
+			return null;
+		}
+
+		/** @var Config $config */
+		$config = MediaWikiServices::getInstance()->getService( 'Popups.Config' );
+
+		// Check we're using the PageExtracts API
+		if ( $config->get( 'PopupsGateway' ) === 'mwApiPlain' ) {
+			$exintro = $config->get( 'PopupsTextExtractsIntroOnly' ) ? 'true' : 'false';
+			$page = $title->getPrefixedDBkey();
+
+			// Append all possible extract API URLs, based on values in src/bracketedPixelRatio.js
+			$append[] = self::buildApiUrl( $exintro, 480, $page );
+			$append[] = self::buildApiUrl( $exintro, 640, $page );
 		}
 	}
 }
