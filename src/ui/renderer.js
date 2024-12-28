@@ -1,14 +1,12 @@
-/**
- * @module renderer
- */
-
 import wait from '../wait';
 import pointerMaskSVG from './pointer-mask.svg';
 import { SIZES, createThumbnail } from './thumbnail';
 import { renderPreview } from './templates/preview/preview';
-import { renderReferencePreview } from './templates/referencePreview/referencePreview';
 import { renderPagePreview } from './templates/pagePreview/pagePreview';
-
+/**
+ * @module renderer
+ * @private
+ */
 const landscapePopupWidth = 450,
 	portraitPopupWidth = 320,
 	pointerSize = 8, // Height of the pointer.
@@ -48,7 +46,6 @@ export { pointerSize, landscapePopupWidth, portraitPopupWidth }; // for use in s
  *
  * @private
  * @param {Object} container DOM object to which pointer masks are appended
- * @return {void}
  */
 export function createPointerMasks( container ) {
 	const node = document.createElement( 'div' );
@@ -60,7 +57,6 @@ export function createPointerMasks( container ) {
 /**
  * Initializes the renderer.
  *
- * @return {void}
  */
 export function init() {
 	if ( !supportsCSSClipPath() ) {
@@ -75,7 +71,7 @@ export function init() {
  * TODO: Rename `isTall` to `isPortrait`.
  *
  * @typedef {Object} ext.popups.Preview
- * @property {JQuery} el
+ * @property {jQuery} el
  * @property {boolean} hasThumbnail
  * @property {Object} thumbnail
  * @property {boolean} isTall Sugar around
@@ -113,6 +109,7 @@ export function render( model ) {
 		 *
 		 * See `show` for more detail.
 		 *
+		 * @ignore
 		 * @param {Event} event
 		 * @param {Object} boundActions The
 		 *  [bound action creators](http://redux.js.org/docs/api/bindActionCreators.html)
@@ -133,6 +130,7 @@ export function render( model ) {
 		 *
 		 * See `hide` for more detail.
 		 *
+		 * @ignore
 		 * @return {jQuery.Promise<void>}
 		 */
 		hide() {
@@ -184,7 +182,7 @@ function supportsCSSClipPath() {
 	return window.CSS &&
 		typeof CSS.supports === 'function' &&
 		CSS.supports( 'clip-path', 'polygon(1px 1px)' );
-	/* eslint-enable compat/compat */
+
 }
 
 /**
@@ -247,18 +245,6 @@ export function createDisambiguationPreview( model ) {
 }
 
 /**
- * @param {ext.popups.ReferencePreviewModel} model
- * @return {ext.popups.Preview}
- */
-export function createReferencePreview( model ) {
-	return {
-		el: renderReferencePreview( model ),
-		hasThumbnail: false,
-		isTall: false
-	};
-}
-
-/**
  * Shows the preview.
  *
  * Extracted from `mw.popups.render.openPopup`.
@@ -266,6 +252,8 @@ export function createReferencePreview( model ) {
  * TODO: From the perspective of the client, there's no need to distinguish
  * between rendering and showing a preview. Merge #render and Preview#show.
  *
+ * @private
+ * @ignore
  * @param {ext.popups.Preview} preview
  * @param {ext.popups.Measures} measures
  * @param {HTMLElement} _link event target (unused)
@@ -312,7 +300,6 @@ export function show(
  *
  * @param {ext.popups.Preview} preview
  * @param {ext.popups.PreviewBehavior} behavior
- * @return {void}
  */
 export function bindBehavior( preview, behavior ) {
 	preview.el.addEventListener( 'mouseenter', behavior.previewDwell );
@@ -397,7 +384,7 @@ export function createLayout(
 			// Position according to link position or size
 			measures.offset.top + measures.height + pointerSize,
 		offsetLeft;
-	const clientTop = measures.clientY ? measures.clientY : offsetTop;
+	const clientTop = measures.clientY ? measures.clientY : offsetTop - measures.scrollTop;
 
 	if ( measures.pageX ) {
 		if ( measures.width > maxLinkWidthForCenteredPointer ) {
@@ -535,7 +522,6 @@ export function getClasses( preview, layout ) {
  * @param {number} predefinedLandscapeImageHeight landscape image height
  * @param {number} pointerSpaceSize
  * @param {number} windowHeight
- * @return {void}
  */
 export function layoutPreview(
 	preview, layout, classes, predefinedLandscapeImageHeight, pointerSpaceSize, windowHeight
@@ -551,7 +537,7 @@ export function layoutPreview(
 			thumbnail.height < predefinedLandscapeImageHeight && !supportsCSSClipPath()
 	) {
 		const popupExtract = popup.querySelector( '.mwe-popups-extract' );
-		popupExtract.style.marginTop = `${( thumbnail.height - pointerSpaceSize )}px`;
+		popupExtract.style.marginTop = `${ ( thumbnail.height - pointerSpaceSize ) }px`;
 	}
 
 	// The following classes are used here:
@@ -566,9 +552,9 @@ export function layoutPreview(
 	// * mwe-popups-no-image-pointer
 	popup.classList.add.apply( popup.classList, classes );
 
-	popup.style.left = `${layout.offset.left}px`;
-	popup.style.top = flippedY ? 'auto' : `${layout.offset.top}px`;
-	popup.style.bottom = flippedY ? `${windowHeight - layout.offset.top}px` : 'auto';
+	popup.style.left = `${ layout.offset.left }px`;
+	popup.style.top = flippedY ? 'auto' : `${ layout.offset.top }px`;
+	popup.style.bottom = flippedY ? `${ windowHeight - layout.offset.top }px` : 'auto';
 
 	if ( hasThumbnail && !supportsCSSClipPath() ) {
 		setThumbnailClipPath( preview, layout );
@@ -588,7 +574,6 @@ export function layoutPreview(
  *
  * @param {ext.popups.Preview} preview
  * @param {ext.popups.PreviewLayout} layout
- * @return {void}
  */
 export function setThumbnailClipPath(
 	{ el, isTall, thumbnail }, { flippedY, flippedX, dir }
@@ -615,11 +600,11 @@ export function setThumbnailClipPath(
 		const mask = document.getElementById( maskID );
 		mask.setAttribute(
 			'transform',
-			`matrix(${matrix.scaleX} 0 0 1 ${matrix.translateX} 0)`
+			`matrix(${ matrix.scaleX } 0 0 1 ${ matrix.translateX } 0)`
 		);
 
 		el.querySelector( 'image' )
-			.setAttribute( 'clip-path', `url(#${maskID})` );
+			.setAttribute( 'clip-path', `url(#${ maskID })` );
 	}
 }
 
@@ -688,7 +673,10 @@ export function getClosestYPosition( y, rects, isTop ) {
 }
 
 export const test = {
-	/** For testing only */
+	/**
+	 * For testing only
+	 * @private
+	 */
 	reset: () => {
 		renderers = {};
 	}

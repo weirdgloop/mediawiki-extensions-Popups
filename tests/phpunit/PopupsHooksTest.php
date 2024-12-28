@@ -19,7 +19,10 @@
  * @ingroup extensions
  */
 
-use MediaWiki\User\UserOptionsManager;
+use MediaWiki\Config\HashConfig;
+use MediaWiki\Config\MultiConfig;
+use MediaWiki\Output\OutputPage;
+use MediaWiki\User\User;
 use Popups\PopupsContext;
 use Popups\PopupsHooks;
 use Psr\Log\LoggerInterface;
@@ -41,11 +44,14 @@ class PopupsHooksTest extends MediaWikiIntegrationTestCase {
 			->method( 'showPreviewsOptInOnPreferencesPage' )
 			->willReturn( false );
 
-		$this->setService( 'Popups.Context', $contextMock );
 		$prefs = [ 'someNotEmptyValue' => 'notEmpty' ];
 
-		$userOptionsManager = $this->getServiceContainer()->getUserOptionsManager();
-		( new PopupsHooks( $userOptionsManager ) )
+		( new PopupsHooks(
+			new HashConfig(),
+			$contextMock,
+			$this->getServiceContainer()->getService( 'Popups.Logger' ),
+			$this->getServiceContainer()->getUserOptionsManager()
+		) )
 			->onGetPreferences( $this->createMock( User::class ), $prefs );
 		$this->assertCount( 1, $prefs, 'No preferences are retrieved.' );
 		$this->assertSame( 'notEmpty',
@@ -68,22 +74,25 @@ class PopupsHooksTest extends MediaWikiIntegrationTestCase {
 			->with( $userMock )
 			->willReturn( true );
 
-		$this->setService( 'Popups.Context', $contextMock );
 		$prefs = [];
 
-		$userOptionsManager = $this->getServiceContainer()->getUserOptionsManager();
-		( new PopupsHooks( $userOptionsManager ) )
+		( new PopupsHooks(
+			new HashConfig(),
+			$contextMock,
+			$this->getServiceContainer()->getService( 'Popups.Logger' ),
+			$this->getServiceContainer()->getUserOptionsManager()
+		) )
 			->onGetPreferences( $userMock, $prefs );
-		$this->assertArrayHasKey( PopupsContext::PREVIEWS_OPTIN_PREFERENCE_NAME,
+		$this->assertArrayHasKey( 'popups',
 			$prefs,
 			'The opt-in preference is retrieved.' );
 		$this->assertArrayHasKey( 'disabled',
-			$prefs[ PopupsContext::PREVIEWS_OPTIN_PREFERENCE_NAME ],
+			$prefs[ 'popups' ],
 			'The opt-in preference has a status.' );
 		$this->assertTrue(
-			$prefs[ PopupsContext::PREVIEWS_OPTIN_PREFERENCE_NAME]['disabled'],
+			$prefs[ 'popups']['disabled'],
 			'The opt-in preference\'s status is disabled.' );
-		$this->assertNotEmpty( $prefs[ PopupsContext::PREVIEWS_OPTIN_PREFERENCE_NAME]['help-message'],
+		$this->assertNotEmpty( $prefs[ 'popups']['help-message'],
 			'The opt-in preference has a help message.' );
 	}
 
@@ -99,25 +108,28 @@ class PopupsHooksTest extends MediaWikiIntegrationTestCase {
 			->method( 'conflictsWithNavPopupsGadget' )
 			->willReturn( false );
 
-		$this->setService( 'Popups.Context', $contextMock );
 		$prefs = [
 			'skin' => 'skin stuff',
 			'someNotEmptyValue' => 'notEmpty',
 			'other' => 'notEmpty'
 		];
 
-		$userOptionsManager = $this->getServiceContainer()->getUserOptionsManager();
-		( new PopupsHooks( $userOptionsManager ) )
+		( new PopupsHooks(
+			new HashConfig(),
+			$contextMock,
+			$this->getServiceContainer()->getService( 'Popups.Logger' ),
+			$this->getServiceContainer()->getUserOptionsManager()
+		) )
 			->onGetPreferences( $this->createMock( User::class ), $prefs );
 		$this->assertGreaterThan( 3, count( $prefs ), 'A preference is retrieved.' );
 		$this->assertSame( 'notEmpty',
 			$prefs[ 'someNotEmptyValue'],
 			'Unretrieved preferences are unchanged.' );
-		$this->assertArrayHasKey( PopupsContext::PREVIEWS_OPTIN_PREFERENCE_NAME,
+		$this->assertArrayHasKey( 'popups',
 			$prefs,
 			'The opt-in preference is retrieved.' );
 		$this->assertSame( 1,
-			array_search( PopupsContext::PREVIEWS_OPTIN_PREFERENCE_NAME,
+			array_search( 'popups',
 				array_keys( $prefs ) ),
 			'The opt-in preference is injected after Skin select.' );
 	}
@@ -134,21 +146,24 @@ class PopupsHooksTest extends MediaWikiIntegrationTestCase {
 			->method( 'conflictsWithNavPopupsGadget' )
 			->willReturn( false );
 
-		$this->setService( 'Popups.Context', $contextMock );
 		$prefs = [
 			'someNotEmptyValue' => 'notEmpty',
 			'other' => 'notEmpty'
 		];
 
-		$userOptionsManager = $this->getServiceContainer()->getUserOptionsManager();
-		( new PopupsHooks( $userOptionsManager ) )
+		( new PopupsHooks(
+			new HashConfig(),
+			$contextMock,
+			$this->getServiceContainer()->getService( 'Popups.Logger' ),
+			$this->getServiceContainer()->getUserOptionsManager()
+		) )
 			->onGetPreferences( $this->createMock( User::class ), $prefs );
 		$this->assertGreaterThan( 2, count( $prefs ), 'A preference is retrieved.' );
-		$this->assertArrayHasKey( PopupsContext::PREVIEWS_OPTIN_PREFERENCE_NAME,
+		$this->assertArrayHasKey( 'popups',
 			$prefs,
 			'The opt-in preference is retrieved.' );
 		$this->assertSame( 2,
-			array_search( PopupsContext::PREVIEWS_OPTIN_PREFERENCE_NAME,
+			array_search( 'popups',
 				array_keys( $prefs ) ),
 			'The opt-in preference is appended.' );
 	}
@@ -159,23 +174,26 @@ class PopupsHooksTest extends MediaWikiIntegrationTestCase {
 	public function testOnResourceLoaderGetConfigVars() {
 		$vars = [ 'something' => 'notEmpty' ];
 		$config = [
-			'wgPopupsRestGatewayEndpoint' => '/api',
-			'wgPopupsVirtualPageViews' => true,
-			'wgPopupsGateway' => 'mwApiPlain',
-			'wgPopupsStatsvSamplingRate' => 0,
-			'wgPopupsTextExtractsIntroOnly' => true,
+			'PopupsRestGatewayEndpoint' => '/api',
+			'PopupsVirtualPageViews' => true,
+			'PopupsGateway' => 'mwApiPlain',
+			'PopupsStatsvSamplingRate' => 0,
+			'PopupsTextExtractsIntroOnly' => true,
 		];
-		$this->setMwGlobals( $config );
-		$userOptionsManager = $this->getServiceContainer()->getUserOptionsManager();
-		( new PopupsHooks( $userOptionsManager ) )
+		( new PopupsHooks(
+			new HashConfig( $config ),
+			$this->getServiceContainer()->getService( 'Popups.Context' ),
+			$this->getServiceContainer()->getService( 'Popups.Logger' ),
+			$this->getServiceContainer()->getUserOptionsManager()
+		) )
 			->onResourceLoaderGetConfigVars( $vars, '', new MultiConfig( $config ) );
 		$this->assertCount( 6, $vars, 'A configuration is retrieved.' );
 
 		foreach ( $config as $key => $value ) {
 			$this->assertSame(
 				$value,
-				$vars[ $key ],
-				"It forwards the \"{$key}\" config variable to the client."
+				$vars[ "wg$key" ],
+				"It forwards the \"wg{$key}\" config variable to the client."
 			);
 		}
 	}
@@ -199,24 +217,24 @@ class PopupsHooksTest extends MediaWikiIntegrationTestCase {
 		$contextMock->expects( $this->once() )
 			->method( 'isTitleExcluded' )
 			->willReturn( false );
-		$contextMock->expects( $this->once() )
-			->method( 'getLogger' )
-			->willReturn( $loggerMock );
 
-		$this->setService( 'Popups.Context', $contextMock );
-		$userOptionsManager = $this->getServiceContainer()->getUserOptionsManager();
-		( new PopupsHooks( $userOptionsManager ) )
+		( new PopupsHooks(
+			new HashConfig(),
+			$contextMock,
+			$loggerMock,
+			$this->getServiceContainer()->getUserOptionsManager()
+		) )
 			->onBeforePageDisplay( $outPageMock, $skinMock );
 	}
 
 	public static function providerOnBeforePageDisplay() {
 		return [
-			[ false, false, false ],
-			[ true, true, false ],
+			[ true, false ],
+			[ true, false ],
 			// Code not sent if title is excluded
-			[ true, false, true ],
+			[ false, true ],
 			// Code not sent if title is excluded
-			[ false, false, true ]
+			[ false, true ]
 		];
 	}
 
@@ -224,16 +242,17 @@ class PopupsHooksTest extends MediaWikiIntegrationTestCase {
 	 * @covers ::onBeforePageDisplay
 	 * @dataProvider providerOnBeforePageDisplay
 	 */
-	public function testOnBeforePageDisplay( $shouldSendModuleToUser,
+	public function testOnBeforePageDisplay(
 			$isCodeLoaded, $isTitleExcluded ) {
 		$skinMock = $this->createMock( Skin::class );
 
+		$user = $this->getServiceContainer()->getUserFactory()->newAnonymous();
 		$outPageMock = $this->createMock( OutputPage::class );
 		$outPageMock->expects( $isCodeLoaded ? $this->once() : $this->never() )
 			->method( 'addModules' )
 			->with( [ 'ext.popups' ] );
 		$outPageMock->method( 'getUser' )
-			->willReturn( User::newFromId( 0 ) );
+			->willReturn( $user );
 
 		$contextMock = $this->createMock( PopupsContext::class );
 
@@ -243,16 +262,16 @@ class PopupsHooksTest extends MediaWikiIntegrationTestCase {
 				->willReturn( true );
 		}
 
-		$contextMock->method( 'shouldSendModuleToUser' )
-			->willReturn( $shouldSendModuleToUser );
-
 		$contextMock->expects( $this->once() )
 			->method( 'isTitleExcluded' )
 			->willReturn( $isTitleExcluded );
 
-		$this->setService( 'Popups.Context', $contextMock );
-		$userOptionsManager = $this->getServiceContainer()->getUserOptionsManager();
-		( new PopupsHooks( $userOptionsManager ) )
+		( new PopupsHooks(
+			new HashConfig(),
+			$contextMock,
+			$this->getServiceContainer()->getService( 'Popups.Logger' ),
+			$this->getServiceContainer()->getUserOptionsManager()
+		) )
 			->onBeforePageDisplay( $outPageMock, $skinMock );
 	}
 
@@ -260,7 +279,7 @@ class PopupsHooksTest extends MediaWikiIntegrationTestCase {
 	 * @covers ::onMakeGlobalVariablesScript
 	 */
 	public function testOnMakeGlobalVariablesScript() {
-		$user = User::newFromId( 0 );
+		$user = $this->getServiceContainer()->getUserFactory()->newAnonymous();
 
 		$outputPage = $this->createMock( OutputPage::class );
 		$outputPage->method( 'getUser' )
@@ -271,74 +290,18 @@ class PopupsHooksTest extends MediaWikiIntegrationTestCase {
 			->with( $user )
 			->willReturn( 0 );
 
-		$this->setService( 'Popups.Context', $contextMock );
-
 		$vars = [];
-		$userOptionsManager = $this->getServiceContainer()->getUserOptionsManager();
-		( new PopupsHooks( $userOptionsManager ) )
+		( new PopupsHooks(
+			new HashConfig(),
+			$contextMock,
+			$this->getServiceContainer()->getService( 'Popups.Logger' ),
+			$this->getServiceContainer()->getUserOptionsManager()
+		) )
 			->onMakeGlobalVariablesScript( $vars, $outputPage );
 
 		$this->assertCount( 1, $vars, 'Number of added variables.' );
 		$this->assertSame( 0, $vars[ 'wgPopupsFlags' ],
 			'The wgPopupsFlags global is present and 0.' );
-	}
-
-	/**
-	 * @covers ::onUserGetDefaultOptions
-	 * @dataProvider provideReferencePreviewsBetaFlag
-	 */
-	public function testOnUserGetDefaultOptions( $beta ) {
-		$userOptions = [
-			'test' => 'not_empty'
-		];
-
-		$this->setMwGlobals( [
-			'wgPopupsOptInDefaultState' => '1',
-			'wgPopupsReferencePreviews' => true,
-			'wgPopupsReferencePreviewsBetaFeature' => $beta,
-		] );
-
-		$userOptionsManager = $this->getServiceContainer()->getUserOptionsManager();
-		( new PopupsHooks( $userOptionsManager ) )
-			->onUserGetDefaultOptions( $userOptions );
-		$this->assertCount( 3 - $beta, $userOptions );
-		$this->assertSame( '1', $userOptions[ PopupsContext::PREVIEWS_OPTIN_PREFERENCE_NAME ] );
-		if ( $beta === false ) {
-			$this->assertSame( '1', $userOptions[ PopupsContext::REFERENCE_PREVIEWS_PREFERENCE_NAME_AFTER_BETA ] );
-		}
-	}
-
-	/**
-	 * @covers ::onUserGetDefaultOptions
-	 * @dataProvider provideReferencePreviewsBetaFlag
-	 */
-	public function testOnLocalUserCreatedForNewlyCreatedUser( $beta ) {
-		$expectedState = '1';
-
-		$userMock = $this->createMock( User::class );
-
-		$userOptionsManagerMock = $this->createMock( UserOptionsManager::class );
-		$userOptionsManagerMock->expects( $this->exactly( 2 - $beta ) )
-			->method( 'setOption' )
-			->withConsecutive(
-				[ $userMock, 'popups', $expectedState ],
-				[ $userMock, 'popups-reference-previews', $expectedState ]
-			);
-
-		$this->setMwGlobals( [
-			'wgPopupsOptInStateForNewAccounts' => $expectedState,
-			'wgPopupsReferencePreviews' => true,
-			'wgPopupsReferencePreviewsBetaFeature' => $beta,
-		] );
-		( new PopupsHooks( $userOptionsManagerMock ) )
-			->onLocalUserCreated( $userMock, false );
-	}
-
-	public static function provideReferencePreviewsBetaFlag() {
-		return [
-			[ false ],
-			[ true ],
-		];
 	}
 
 }

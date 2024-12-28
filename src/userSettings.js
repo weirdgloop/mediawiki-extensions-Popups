@@ -1,16 +1,13 @@
-/**
- * @module userSettings
- */
+import { previewTypes } from './preview/model';
 
 /**
- * @interface UserSettings
- *
- * @global
+ * @module userSettings
+ * @private
  */
 
 const PAGE_PREVIEWS_ENABLED_KEY = 'mwe-popups-enabled',
 	REFERENCE_PREVIEWS_ENABLED_KEY = 'mwe-popups-referencePreviews-enabled',
-	REFERENCE_PREVIEWS_LOGGING_SCHEMA = 'event.ReferencePreviewsPopups';
+	PAGE_PREVIEWS_CHANGE_SETTING_EVENT = 'Popups.SettingChange';
 
 /**
  * Creates an object whose methods encapsulate all interactions with the UA's
@@ -22,59 +19,54 @@ const PAGE_PREVIEWS_ENABLED_KEY = 'mwe-popups-enabled',
  */
 export default function createUserSettings( storage ) {
 	return {
-		/**
-		 * Gets whether the user has previously enabled Page Previews.
-		 *
-		 * N.B. that if the user hasn't previously enabled or disabled Page
-		 * Previews, i.e. userSettings.storePagePreviewsEnabled(true), then they are treated as
-		 * if they have enabled them.
-		 *
-		 * @method
-		 * @name UserSettings#isPagePreviewsEnabled
-		 * @return {boolean}
-		 */
-		isPagePreviewsEnabled() {
-			return storage.get( PAGE_PREVIEWS_ENABLED_KEY ) !== '0';
-		},
-
-		/**
-		 * Permanently persists (typically in localStorage) whether the user has enabled Page
-		 * Previews.
-		 *
-		 * @method
-		 * @name UserSettings#storePagePreviewsEnabled
-		 * @param {boolean} enabled
-		 */
-		storePagePreviewsEnabled( enabled ) {
-			if ( enabled ) {
+		migrateOldPreferences() {
+			const isDisabled = !!storage.get( PAGE_PREVIEWS_ENABLED_KEY );
+			if ( isDisabled ) {
 				storage.remove( PAGE_PREVIEWS_ENABLED_KEY );
-			} else {
-				storage.set( PAGE_PREVIEWS_ENABLED_KEY, '0' );
+				this.storePreviewTypeEnabled( previewTypes.TYPE_PAGE, false );
+			}
+			const TYPE_REFERENCE = 'reference';
+			const isRefsDisabled = !!storage.get( REFERENCE_PREVIEWS_ENABLED_KEY );
+			if ( isRefsDisabled ) {
+				storage.remove( REFERENCE_PREVIEWS_ENABLED_KEY );
+				this.storePreviewTypeEnabled( TYPE_REFERENCE, false );
 			}
 		},
-
 		/**
+		 * Check whether the preview type is enabled.
+		 *
 		 * @method
-		 * @name UserSettings#isReferencePreviewsEnabled
+		 * @param {string} previewType
+		 *
 		 * @return {boolean}
 		 */
-		isReferencePreviewsEnabled() {
-			return storage.get( REFERENCE_PREVIEWS_ENABLED_KEY ) !== '0';
+		isPreviewTypeEnabled( previewType ) {
+			const storageKey = `mwe-popups-${ previewType }-enabled`;
+			const value = storage.get( storageKey );
+			return value === null;
 		},
 
 		/**
+		 * Permanently persists (typically in localStorage) whether the user has enabled
+		 * the preview type.
+		 *
 		 * @method
-		 * @name UserSettings#storeReferencePreviewsEnabled
+		 * @name UserSettings#storePreviewTypeEnabled
+		 * @param {string} previewType
 		 * @param {boolean} enabled
 		 */
-		storeReferencePreviewsEnabled( enabled ) {
+		storePreviewTypeEnabled( previewType, enabled ) {
+			const storageKey = `mwe-popups-${ previewType }-enabled`;
 			if ( enabled ) {
-				storage.remove( REFERENCE_PREVIEWS_ENABLED_KEY );
+				storage.remove( storageKey );
 			} else {
-				storage.set( REFERENCE_PREVIEWS_ENABLED_KEY, '0' );
+				storage.set( storageKey, '0' );
 			}
-
-			mw.track( REFERENCE_PREVIEWS_LOGGING_SCHEMA, {
+			/**
+			 * @stable for use in MediaWiki extensions.
+			 */
+			mw.track( PAGE_PREVIEWS_CHANGE_SETTING_EVENT, {
+				previewType,
 				action: enabled ? 'anonymousEnabled' : 'anonymousDisabled'
 			} );
 		}

@@ -10,7 +10,7 @@
 	"descriptionmsg": "popups-desc",
 	"license-name": "GPL-2.0-or-later",
 	"requires": {
-		"MediaWiki": ">= 1.41"
+		"MediaWiki": ">= 1.43"
 	},
 	"AutoloadNamespaces": {
 		"Popups\\": "includes/"
@@ -22,16 +22,15 @@
 		"BeforePageDisplay": "PopupsHooks",
 		"ResourceLoaderGetConfigVars": "PopupsHooks",
 		"GetPreferences": "PopupsHooks",
-		"UserGetDefaultOptions": "PopupsHooks",
-		"MakeGlobalVariablesScript": "PopupsHooks",
-		"LocalUserCreated": "PopupsHooks",
-		"GetBetaFeaturePreferences": "PopupsHooks",
-		"HtmlCacheUpdaterAppendUrls": "PopupsHooks"
+		"MakeGlobalVariablesScript": "PopupsHooks"
 	},
 	"HookHandlers": {
 		"PopupsHooks": {
 			"class": "Popups\\PopupsHooks",
 			"services": [
+				"Popups.Config",
+				"Popups.Context",
+				"Popups.Logger",
 				"UserOptionsManager"
 			]
 		}
@@ -44,7 +43,6 @@
 	"attributes": {
 		"EventLogging": {
 			"Schemas": {
-				"ReferencePreviewsPopups": "/analytics/legacy/referencepreviewspopups/1.1.0",
 				"VirtualPageView": "/analytics/legacy/virtualpageview/1.0.0"
 			}
 		}
@@ -58,21 +56,9 @@
 			"description": "@var bool: Whether the option to enable/disable Page Previews should be hidden on Preferences page. False by default",
 			"value": false
 		},
-		"PopupsOptInDefaultState": {
-			"description": "@var string:['1'|'0'] Default Page Previews visibility for old accounts. Has to be a string as a compatibility with beta feature settings. For more info see @T191888",
-			"value": "1"
-		},
-		"PopupsOptInStateForNewAccounts": {
-			"description": "@var string:['1'|'0'] Default Page Previews visibility for newly created accounts (from Q2 2018). For more info see @T191888",
-			"value": "1"
-		},
 		"PopupsConflictingNavPopupsGadgetName": {
 			"description": "@var string: Navigation popups gadget name",
 			"value": "Navigation_popups"
-		},
-		"PopupsConflictingRefTooltipsGadgetName": {
-			"description": "@var string: Name of a gadget that would cause duplicate reference preview popups. Known conflicting gadgets include \"ReferenceTooltips\", \"CiteTooltip\" alias \"RefTooltip\", \"ReferencePopups\", and \"tooltipRef\" (see T274353).",
-			"value": "ReferenceTooltips"
 		},
 		"PopupsGateway": {
 			"description": "Which gateway to use for fetching Popups data. Available options: [mwApiPlain|restbasePlain|restbaseHTML]. Full and always up to date list is available in src/gateway/index.js",
@@ -81,14 +67,6 @@
 		"PopupsRestGatewayEndpoint": {
 			"description": "Specify a REST endpoint where summaries should be sourced from. Endpoint must meet the spec at https://www.mediawiki.org/wiki/Specs/Summary/1.2.0",
 			"value": "/api/rest_v1/page/summary/"
-		},
-		"PopupsReferencePreviews": {
-			"description": "Temporary feature flag to disable reference previews during developement.",
-			"value": true
-		},
-		"PopupsReferencePreviewsBetaFeature": {
-			"description": "Make Reference Previews a Beta feature.",
-			"value": true
 		},
 		"PopupsStatsvSamplingRate": {
 			"description": "Sampling rate for logging performance data to statsv.",
@@ -124,33 +102,14 @@
 	},
 	"ResourceModules": {
 		"ext.popups.icons": {
-			"class": "ResourceLoaderOOUIIconPackModule",
+			"class": "MediaWiki\\ResourceLoader\\OOUIIconPackModule",
 			"selectorWithoutVariant": ".popups-icon--{name}",
 			"icons": [
 				"infoFilled",
 				"settings"
 			]
 		},
-		"ext.popups.images": {
-			"selector": ".popups-icon--{name}",
-			"class": "ResourceLoaderImageModule",
-			"images": {
-				"preview-generic": {
-					"file": {
-						"ltr": "resources/ext.popups.images/sad-face-ltr.svg",
-						"rtl": "resources/ext.popups.images/sad-face-rtl.svg"
-					}
-				},
-				"footer": {
-					"file": {
-						"ltr": "resources/ext.popups.images/footer-ltr.svg",
-						"rtl": "resources/ext.popups.images/footer-rtl.svg"
-					}
-				}
-			}
-		},
 		"ext.popups": {
-			"es6": true,
 			"packageFiles": [
 				{
 					"name": "resources/ext.popups/types.json",
@@ -160,7 +119,13 @@
 			]
 		},
 		"ext.popups.main": {
-			"es6": true,
+			"class": "MediaWiki\\ResourceLoader\\CodexModule",
+			"codexStyleOnly": true,
+			"codexComponents": [
+				"CdxButton",
+				"CdxIcon",
+				"CdxCheckbox"
+			],
 			"scripts": [
 				"resources/dist/index.js"
 			],
@@ -182,26 +147,17 @@
 				"popups-preview-no-preview",
 				"popups-preview-footer-read",
 				"popups-preview-disambiguation",
-				"popups-preview-disambiguation-link",
-				"popups-refpreview-reference",
-				"popups-refpreview-book",
-				"popups-refpreview-journal",
-				"popups-refpreview-news",
-				"popups-refpreview-note",
-				"popups-refpreview-web",
-				"popups-refpreview-collapsible-placeholder"
+				"popups-preview-disambiguation-link"
 			],
 			"dependencies": [
 				"web2017-polyfills",
-				"ext.popups.images",
 				"mediawiki.experiments",
 				"mediawiki.jqueryMsg",
 				"mediawiki.storage",
 				"mediawiki.Title",
 				"mediawiki.Uri",
 				"mediawiki.user",
-				"mediawiki.util",
-				"codex-search-styles"
+				"mediawiki.util"
 			]
 		}
 	},
@@ -213,8 +169,24 @@
 		"includes/ServiceWiring.php"
 	],
 	"DefaultUserOptions": {
-		"popupsreferencepreviews": 0,
-		"popups-reference-previews": 0
+		"popups": "1"
+	},
+	"ConditionalUserOptions": {
+		"popups": [
+			[
+				"1",
+				[
+					"registered-after",
+					"20170816000000"
+				]
+			],
+			[
+				"0",
+				[
+					"named-user"
+				]
+			]
+		]
 	},
 	"manifest_version": 2
 }

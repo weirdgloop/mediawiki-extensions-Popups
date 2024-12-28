@@ -1,5 +1,6 @@
 /**
  * @module popup
+ * @private
  */
 
 import { createNodeFromTemplate } from '../templateUtil';
@@ -9,8 +10,8 @@ const templateHTML = `
 `;
 /**
  * @param {ext.popups.previewTypes} type
- * @param {Element} element The contents of the popup.
- * @return {Element}
+ * @param {HTMLElement} element The contents of the popup.
+ * @return {HTMLElement}
  */
 
 export function renderPopup( type, container ) {
@@ -20,7 +21,7 @@ export function renderPopup( type, container ) {
 	// * mwe-popups-type-unknown
 	// * mwe-popups-type-generic
 	// * mwe-popups-type-disambiguation
-	element.className = `mwe-popups mwe-popups-type-${type}`;
+	element.className = `mwe-popups mwe-popups-type-${ type }`;
 	container.className = 'mwe-popups-container';
 	element.appendChild( container );
 	return element;

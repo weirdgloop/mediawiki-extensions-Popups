@@ -59,12 +59,27 @@ QUnit.test( '#boot', ( assert ) => {
 	);
 } );
 
+QUnit.test( '#registerSetting', ( assert ) => {
+	const action = actions.registerSetting(
+		'foo',
+		false
+	);
+	assert.deepEqual(
+		action,
+		{
+			type: actionTypes.REGISTER_SETTING,
+			name: 'foo',
+			enabled: false
+		},
+		'Setting action'
+	);
+} );
+
 /**
  * Stubs `wait.js` and adds the deferred and its promise as properties
  * of the module.
  *
  * @param {Object} module
- * @return {void}
  */
 function setupWait( module ) {
 	module.waitPromise = $.Deferred().resolve().promise( { abort() {} } );
@@ -78,7 +93,6 @@ function setupWait( module ) {
  * creator.
  *
  * @param {Object} module
- * @return {void}
  */
 function setupEl( module ) {
 	module.title = TEST_TITLE;

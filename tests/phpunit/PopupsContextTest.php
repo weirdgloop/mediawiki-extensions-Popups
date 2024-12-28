@@ -19,8 +19,11 @@
  * @ingroup extensions
  */
 
+use MediaWiki\Config\GlobalVarConfig;
+use MediaWiki\MainConfigNames;
+use MediaWiki\Registration\ExtensionRegistry;
 use MediaWiki\Title\Title;
-use MediaWiki\User\UserOptionsLookup;
+use MediaWiki\User\User;
 use PHPUnit\Framework\MockObject\Stub\ConsecutiveCalls;
 use Popups\PopupsContext;
 use Popups\PopupsGadgetsIntegration;
@@ -68,7 +71,7 @@ class PopupsContextTest extends MediaWikiIntegrationTestCase {
 	 * @param bool $expected
 	 */
 	public function testShowPreviewsPreferencesPage( array $config, $expected ) {
-		$this->setMwGlobals( $config );
+		$this->overrideConfigValues( $config );
 		$context = $this->getContext();
 		$this->assertSame( $expected,
 			$context->showPreviewsOptInOnPreferencesPage(),
@@ -79,70 +82,15 @@ class PopupsContextTest extends MediaWikiIntegrationTestCase {
 		return [
 			[
 				[
-					'wgPopupsHideOptInOnPreferencesPage' => false
+					'PopupsHideOptInOnPreferencesPage' => false
 				],
 				true
 			],
 			[
 				[
-					'wgPopupsHideOptInOnPreferencesPage' => true
+					'PopupsHideOptInOnPreferencesPage' => true
 				],
 				false
-			]
-		];
-	}
-
-	/**
-	 * @covers ::shouldSendModuleToUser
-	 */
-	public function testShouldSendToAnonUser() {
-		$user = $this->createMock( User::class );
-		$user->method( 'getId' )->willReturn( self::ANONYMOUS_USER );
-
-		$context = $this->getContext();
-		$this->assertTrue(
-			$context->shouldSendModuleToUser( $user ),
-			'The module is always sent to anonymous users.'
-		);
-	}
-
-	/**
-	 * Tests #shouldSendModuleToUser when the user is logged in and the reference previews feature
-	 * is disabled.
-	 *
-	 * @covers ::shouldSendModuleToUser
-	 * @dataProvider provideTestDataForShouldSendModuleToUser
-	 * @param bool $optIn
-	 * @param bool $expected
-	 */
-	public function testShouldSendModuleToUser( $optIn, $expected ) {
-		$this->setMwGlobals( [
-			'wgPopupsReferencePreviews' => false,
-		] );
-
-		$user = $this->createMock( User::class );
-		$user->method( 'isNamed' )->willReturn( true );
-		$userOptLookup = $this->createMock( UserOptionsLookup::class );
-		$userOptLookup->method( 'getBoolOption' )
-			->with( $user, PopupsContext::PREVIEWS_OPTIN_PREFERENCE_NAME )
-			->willReturn( $optIn );
-		$this->setService( 'UserOptionsLookup', $userOptLookup );
-
-		$context = $this->getContext();
-		$this->assertSame( $expected,
-			$context->shouldSendModuleToUser( $user ),
-			( $expected ? 'A' : 'No' ) . ' module is sent to the user.' );
-	}
-
-	public static function provideTestDataForShouldSendModuleToUser() {
-		return [
-			[
-				'optin' => PopupsContext::PREVIEWS_ENABLED,
-				'expected' => true
-			],
-			[
-				'optin' => PopupsContext::PREVIEWS_DISABLED,
-				'expected' => false
 			]
 		];
 	}
@@ -158,9 +106,7 @@ class PopupsContextTest extends MediaWikiIntegrationTestCase {
 	 */
 	public function testAreDependenciesMet( $textExtracts, $pageImages,
 		$gateway, $expected ) {
-		$this->setMwGlobals( [
-			'wgPopupsGateway' => $gateway,
-		] );
+		$this->overrideConfigValue( 'PopupsGateway', $gateway );
 		$returnValues = [ $textExtracts, $pageImages ];
 
 		$mock = $this->createMock( ExtensionRegistry::class );
@@ -213,7 +159,7 @@ class PopupsContextTest extends MediaWikiIntegrationTestCase {
 	 * @param bool $expected
 	 */
 	public function testIsTitleExcluded( array $excludedPages, Title $title, $expected ) {
-		$this->setMwGlobals( [ 'wgPopupsPageDisabled' => $excludedPages ] );
+		$this->overrideConfigValue( 'PopupsPageDisabled', $excludedPages );
 		$context = $this->getContext();
 		$this->assertSame( $expected,
 			$context->isTitleExcluded( $title ),
@@ -243,9 +189,9 @@ class PopupsContextTest extends MediaWikiIntegrationTestCase {
 		$page = 'Specjalna:Preferencje';
 		$excludedPages = [ 'Special:Preferences' ];
 
-		$this->setMwGlobals( [
-			'wgPopupsPageDisabled' => $excludedPages,
-			'wgLanguageCode' => 'pl'
+		$this->overrideConfigValues( [
+			'PopupsPageDisabled' => $excludedPages,
+			MainConfigNames::LanguageCode => 'pl',
 		] );
 		$context = $this->getContext();
 		$this->assertTrue(
@@ -276,35 +222,20 @@ class PopupsContextTest extends MediaWikiIntegrationTestCase {
 	 * @covers ::getConfigBitmaskFromUser
 	 * @dataProvider provideTestGetConfigBitmaskFromUser
 	 * @param bool $navPops
-	 * @param bool $refTooltips
-	 * @param bool $refEnabled
-	 * @param bool $refInBeta
 	 * @param int $expected
 	 */
 	public function testGetConfigBitmaskFromUser(
 		$navPops,
-		$refTooltips,
-		$refEnabled,
-		$refInBeta,
 		$expected
 	) {
 		$contextMock = $this->createPartialMock(
 			PopupsContext::class,
 			[
-				'conflictsWithNavPopupsGadget',
-				'conflictsWithRefTooltipsGadget',
-				'isReferencePreviewsEnabled',
-				'isReferencePreviewsInBeta',
+				'conflictsWithNavPopupsGadget'
 			]
 		);
 		$contextMock->method( 'conflictsWithNavPopupsGadget' )
 			->willReturn( $navPops );
-		$contextMock->method( 'conflictsWithRefTooltipsGadget' )
-			->willReturn( $refTooltips );
-		$contextMock->method( 'isReferencePreviewsEnabled' )
-			->willReturn( $refEnabled );
-		$contextMock->method( 'isReferencePreviewsInBeta' )
-			->willReturn( $refInBeta );
 
 		$this->assertSame(
 			$expected,
@@ -316,29 +247,9 @@ class PopupsContextTest extends MediaWikiIntegrationTestCase {
 		return [
 			[
 				true,
-				true,
-				true,
-				true,
-				15,
+				1,
 			],
 			[
-				false,
-				true,
-				false,
-				true,
-				10,
-			],
-			[
-				true,
-				false,
-				true,
-				false,
-				5,
-			],
-			[
-				false,
-				false,
-				false,
 				false,
 				0,
 			],

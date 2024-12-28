@@ -20,13 +20,12 @@
  */
 namespace Popups;
 
-use Config;
-use ExtensionRegistry;
-use MediaWiki\Extension\BetaFeatures\BetaFeatures;
-use MediaWiki\MediaWikiServices;
+use MediaWiki\Config\Config;
+use MediaWiki\Registration\ExtensionRegistry;
 use MediaWiki\SpecialPage\SpecialPageFactory;
 use MediaWiki\Title\Title;
-use MediaWiki\User\UserOptionsLookup;
+use MediaWiki\User\Options\UserOptionsLookup;
+use MediaWiki\User\User;
 
 /**
  * Popups Module
@@ -53,31 +52,12 @@ class PopupsContext {
 	public const PREVIEWS_DISABLED = false;
 
 	/**
-	 * User preference key to enable/disable Page Previews
-	 */
-	public const PREVIEWS_OPTIN_PREFERENCE_NAME = 'popups';
-
-	/**
-	 * User preference key to enable/disable Reference Previews. Named
-	 * "mwe-popups-referencePreviews-enabled" in localStorage for anonymous users.
-	 */
-	public const REFERENCE_PREVIEWS_PREFERENCE_NAME_AFTER_BETA = 'popups-reference-previews';
-
-	/**
-	 * User preference key to enable/disable Reference Previews
-	 */
-	public const REFERENCE_PREVIEWS_PREFERENCE_NAME = 'popupsreferencepreviews';
-
-	/**
 	 * Flags passed on to JS representing preferences
 	 */
 	private const NAV_POPUPS_ENABLED = 1;
-	private const REF_TOOLTIPS_ENABLED = 2;
-	private const REFERENCE_PREVIEWS_ENABLED = 4;
-	private const REFERENCE_PREVIEWS_BETA = 8;
 
 	/**
-	 * @var \Config
+	 * @var Config
 	 */
 	private $config;
 
@@ -112,7 +92,6 @@ class PopupsContext {
 	 * @param PopupsGadgetsIntegration $gadgetsIntegration Gadgets integration helper
 	 * @param SpecialPageFactory $specialPageFactory
 	 * @param UserOptionsLookup $userOptionsLookup
-	 *  events
 	 */
 	public function __construct(
 		Config $config,
@@ -121,28 +100,19 @@ class PopupsContext {
 		SpecialPageFactory $specialPageFactory,
 		UserOptionsLookup $userOptionsLookup
 	) {
+		$this->config = $config;
 		$this->extensionRegistry = $extensionRegistry;
 		$this->gadgetsIntegration = $gadgetsIntegration;
 		$this->specialPageFactory = $specialPageFactory;
 		$this->userOptionsLookup = $userOptionsLookup;
-
-		$this->config = $config;
 	}
 
 	/**
-	 * @param \User $user User whose gadgets settings are being checked
+	 * @param User $user User whose gadgets settings are being checked
 	 * @return bool
 	 */
-	public function conflictsWithNavPopupsGadget( \User $user ) {
+	public function conflictsWithNavPopupsGadget( User $user ) {
 		return $this->gadgetsIntegration->conflictsWithNavPopupsGadget( $user );
-	}
-
-	/**
-	 * @param \User $user User whose gadgets settings are being checked
-	 * @return bool
-	 */
-	public function conflictsWithRefTooltipsGadget( \User $user ) {
-		return $this->gadgetsIntegration->conflictsWithRefTooltipsGadget( $user );
 	}
 
 	/**
@@ -155,64 +125,11 @@ class PopupsContext {
 	}
 
 	/**
-	 * @param \User $user User whose preferences are checked
-	 * @return bool whether or not to show reference previews
-	 */
-	public function isReferencePreviewsEnabled( \User $user ) {
-		// TODO: Remove when the feature flag is not needed any more
-		if ( !$this->config->get( 'PopupsReferencePreviews' ) ) {
-			return false;
-		}
-
-		// TODO: Remove when not in Beta any more
-		if ( $this->isReferencePreviewsInBeta() ) {
-			return BetaFeatures::isFeatureEnabled(
-				$user,
-				self::REFERENCE_PREVIEWS_PREFERENCE_NAME
-			);
-		}
-
-		return !$user->isNamed() || $this->userOptionsLookup->getBoolOption(
-			$user, self::REFERENCE_PREVIEWS_PREFERENCE_NAME_AFTER_BETA
-		);
-	}
-
-	/**
-	 * @return bool whether or not reference previews are a beta feature
-	 */
-	public function isReferencePreviewsInBeta() {
-		// TODO: Remove when not in Beta any more
-		return $this->config->get( 'PopupsReferencePreviewsBetaFeature' ) &&
-			\ExtensionRegistry::getInstance()->isLoaded( 'BetaFeatures' );
-	}
-
-	/**
-	 * @param \User $user User whose preferences are checked
+	 * @param User $user User whose preferences are checked
 	 * @return int
 	 */
-	public function getConfigBitmaskFromUser( \User $user ) {
-		return ( $this->conflictsWithNavPopupsGadget( $user ) ? self::NAV_POPUPS_ENABLED : 0 ) |
-			( $this->conflictsWithRefTooltipsGadget( $user ) ? self::REF_TOOLTIPS_ENABLED : 0 ) |
-			( $this->isReferencePreviewsEnabled( $user ) ? self::REFERENCE_PREVIEWS_ENABLED : 0 ) |
-			( $this->isReferencePreviewsInBeta() ? self::REFERENCE_PREVIEWS_BETA : 0 );
-	}
-
-	/**
-	 * @param \User $user User whose preferences are checked
-	 * @return bool
-	 */
-	public function shouldSendModuleToUser( \User $user ) {
-		if ( !$user->isNamed() ) {
-			return true;
-		}
-
-		$shouldLoadPagePreviews = $this->userOptionsLookup->getBoolOption(
-			$user,
-			self::PREVIEWS_OPTIN_PREFERENCE_NAME
-		);
-		$shouldLoadReferencePreviews = $this->isReferencePreviewsEnabled( $user );
-
-		return $shouldLoadPagePreviews || $shouldLoadReferencePreviews;
+	public function getConfigBitmaskFromUser( User $user ) {
+		return ( $this->conflictsWithNavPopupsGadget( $user ) ? self::NAV_POPUPS_ENABLED : 0 );
 	}
 
 	/**
@@ -266,14 +183,5 @@ class PopupsContext {
 			}
 		}
 		return false;
-	}
-
-	/**
-	 * Get module logger
-	 *
-	 * @return \Psr\Log\LoggerInterface
-	 */
-	public function getLogger() {
-		return MediaWikiServices::getInstance()->getService( 'Popups.Logger' );
 	}
 }

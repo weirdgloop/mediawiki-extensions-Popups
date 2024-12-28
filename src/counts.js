@@ -1,5 +1,6 @@
 /**
  * @module counts
+ * @private
  */
 
 /**
@@ -28,7 +29,7 @@ exports.getEditCountBucket = function getEditCountBucket( count ) {
 		bucket = '1000+';
 	}
 
-	return `${bucket} edits`;
+	return `${ bucket } edits`;
 };
 
 /**
@@ -58,5 +59,5 @@ exports.getPreviewCountBucket = function getPreviewCountBucket( count ) {
 		bucket = '21+';
 	}
 
-	return bucket !== undefined ? ( `${bucket} previews` ) : 'unknown';
+	return bucket !== undefined ? ( `${ bucket } previews` ) : 'unknown';
 };

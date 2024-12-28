@@ -1,5 +1,6 @@
 /**
  * @module container
+ * @private
  */
 
 /**
@@ -13,9 +14,6 @@ export default function createContainer() {
 
 	/**
 	 * The interface implemented by all service containers.
-	 *
-	 * @interface Container
-	 * @global
 	 */
 	return {
 		/**
@@ -24,8 +22,7 @@ export default function createContainer() {
 		 * @method
 		 * @name Container#set
 		 * @param {string} name
-		 * @param {*} factory
-		 * @return {void}
+		 * @param {any} factory
 		 */
 		set( name, factory ) {
 			factories[ name ] = factory;
@@ -68,12 +65,12 @@ export default function createContainer() {
 		 * @method
 		 * @name Container#get
 		 * @param {string} name
-		 * @return {*}
+		 * @return {any}
 		 * @throws Error If the service hasn't been defined
 		 */
 		get( name ) {
 			if ( !this.has( name ) ) {
-				throw new Error( `The service "${name}" hasn't been defined.` );
+				throw new Error( `The service "${ name }" hasn't been defined.` );
 			}
 
 			const factory = factories[ name ];

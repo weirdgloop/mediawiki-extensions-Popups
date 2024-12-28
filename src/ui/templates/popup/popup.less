@@ -12,21 +12,22 @@
 //   Not tall  Landscape  Portrait
 //   Not tall  Missing    Landscape
 
-@borderColorPopup: rgba( 0, 0, 0, 0.05 );
+@borderColorPopup: @background-color-neutral;
 // The subtracting-triangles method results in a line that
 // is ~0.7px wide, so make it slightly darker to compensate.
 @borderColorPopupPointerNoImage: rgba( 0, 0, 0, 0.07 );
 @previewFooterCogIconInteractionAreaSize: 34px;
 @previewFooterHeight: @popupPadding + @previewFooterCogIconInteractionAreaSize;
+@previewBoxShadow: 0 30px 90px -20px rgba( 0, 0, 0, 0.3 ), 0 0 0 1px @borderColorPopup;
 
 // Same as the --pointer-height in popup.less
 @previewPointerHeight: 8px;
 
 .mwe-popups {
-	background: #fff;
+	background: @background-color-base;
 	position: absolute;
 	z-index: @zIndexPopup;
-	box-shadow: 0 30px 90px -20px rgba( 0, 0, 0, 0.3 ), 0 0 1px 1px @borderColorPopup;
+	box-shadow: @previewBoxShadow;
 	padding: 0;
 	display: none;
 	font-size: 14px;
@@ -76,8 +77,7 @@
 			text-decoration: none;
 		}
 
-		&::after,
-		blockquote::after {
+		&::after {
 			content: ' ';
 			position: absolute;
 			bottom: 0;
@@ -101,15 +101,6 @@
 			background-image: linear-gradient( to left, rgba( 255, 255, 255, 0 ), rgba( 255, 255, 255, 1 ) 50% );
 		}
 
-		blockquote::after {
-			width: 100%;
-			height: @lineHeight + 5px;
-			/* @noflip */
-			bottom: 0;
-			/* @noflip */
-			background-image: linear-gradient( to bottom, rgba( 255, 255, 255, 0 ), rgba( 255, 255, 255, 1 ) 75% );
-		}
-
 		// Make the text fit in exactly as many lines as we want.
 		p {
 			margin: 0;
@@ -123,6 +114,13 @@
 		dt {
 			margin-top: 0;
 			margin-bottom: 0;
+		}
+
+		blockquote {
+			// Adjust default spacing to ensure it lines up with the rest of the text
+			// and the fade indicator
+			margin: 0;
+			padding: 0 20px;
 		}
 	}
 
@@ -167,21 +165,6 @@
 		}
 	}
 
-	// TODO: Remove when not in Beta any more (T276200)
-	.mwe-popups-container.footer-empty .mwe-popups-extract {
-		margin-bottom: @popupPadding;
-
-		.mwe-popups-scroll {
-			max-height: 403px - 2 * @popupPadding + @previewPointerHeight;
-		}
-	}
-
-	// TODO: Remove when not in Beta any more (T276200)
-	&.flipped-y .mwe-popups-container.footer-empty .mwe-popups-extract,
-	&.flipped-x-y .mwe-popups-container.footer-empty .mwe-popups-extract {
-		margin-bottom: @popupPadding + @previewPointerHeight;
-	}
-
 	/* Triangles/Pointers */
 	&.mwe-popups-no-image-pointer {
 		&::before {
@@ -189,7 +172,7 @@
 		}
 
 		&::after {
-			.mwe-popups-border-pointer-top( 7px, 7px, #fff, 4px );
+			.mwe-popups-border-pointer-top( 7px, 7px, @background-color-base, 4px );
 		}
 	}
 
@@ -212,7 +195,7 @@
 		}
 
 		&::after {
-			.mwe-popups-border-pointer-top( 8px, 6px, #fff, 4px );
+			.mwe-popups-border-pointer-top( 8px, 6px, @background-color-base, 4px );
 			z-index: @zIndexForeground;
 		}
 
@@ -222,7 +205,7 @@
 			}
 
 			&::after {
-				.mwe-popups-border-pointer-top( 8px, 290px, #fff, 4px );
+				.mwe-popups-border-pointer-top( 8px, 290px, @background-color-base, 4px );
 			}
 		}
 
@@ -259,7 +242,7 @@
 		}
 
 		&::after {
-			.mwe-popups-border-pointer-bottom( 8px, 290px, #fff, 4px );
+			.mwe-popups-border-pointer-bottom( 8px, 290px, @background-color-base, 4px );
 			z-index: @zIndexForeground;
 		}
 
@@ -271,7 +254,7 @@
 			}
 
 			&::after {
-				.mwe-popups-border-pointer-bottom( 8px, 417px, #fff, 4px );
+				.mwe-popups-border-pointer-bottom( 8px, 417px, @background-color-base, 4px );
 			}
 
 			> div > a > svg {
@@ -290,7 +273,7 @@
 		}
 
 		&::after {
-			.mwe-popups-border-pointer-bottom( 7px, 7px, #fff, 4px );
+			.mwe-popups-border-pointer-bottom( 7px, 7px, @background-color-base, 4px );
 		}
 	}
 }
@@ -395,7 +378,7 @@
 			--y5: 100%;
 			padding-top: 0;
 			display: flex;
-			background: #fff;
+			background: @background-color-base;
 			--pseudo-radius: 2px;
 			--pointer-height: 8px;
 			--pointer-width: 16px;
@@ -449,6 +432,43 @@
 				--x4: ~'calc(100% - var(--pointer-offset))';
 				--x5: ~'calc(100% - var(--pointer-offset) + (var(--pointer-width) / 2))';
 			}
+		}
+	}
+}
+
+// Apply night mode styles that can't be handled with CSS variables, i.e. anything with rgba()
+@media screen {
+	html.skin-theme-clientpref-night {
+		.mwe-popups.mwe-popups-no-image-pointer::before {
+			.mwe-popups-border-pointer-top( 8px, 10px, rgba( 255, 255, 255, 0.07 ), 0 );
+		}
+
+		.mwe-popups-extract[ dir='ltr' ]::after {
+			/* @noflip */
+			background-image: linear-gradient( to right, transparent, @background-color-base 50% );
+		}
+
+		.mwe-popups-extract[ dir='rtl' ]::after {
+			/* @noflip */
+			background-image: linear-gradient( to left, transparent, @background-color-base 50% );
+		}
+	}
+}
+
+@media screen and ( prefers-color-scheme: dark ) {
+	html.skin-theme-clientpref-os {
+		.mwe-popups.mwe-popups-no-image-pointer::before {
+			.mwe-popups-border-pointer-top( 8px, 10px, rgba( 255, 255, 255, 0.07 ), 0 );
+		}
+
+		.mwe-popups-extract[ dir='ltr' ]::after {
+			/* @noflip */
+			background-image: linear-gradient( to right, transparent, @background-color-base 50% );
+		}
+
+		.mwe-popups-extract[ dir='rtl' ]::after {
+			/* @noflip */
+			background-image: linear-gradient( to left, transparent, @background-color-base 50% );
 		}
 	}
 }

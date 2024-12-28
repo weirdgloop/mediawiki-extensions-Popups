@@ -1,4 +1,9 @@
 /**
+ * @module canSaveToUserPreferences
+ * @private
+ */
+
+/**
  * Can the current user save to user preferences?
  *
  * @param {User} user

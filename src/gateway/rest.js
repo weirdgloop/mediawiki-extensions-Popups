@@ -1,10 +1,9 @@
-/**
- * @module gateway/rest
- */
-
 import { createModel } from '../preview/model';
 import { abortablePromise } from './index.js';
-
+/**
+ * @module gateway/rest
+ * @private
+ */
 const RESTBASE_PROFILE = 'https://www.mediawiki.org/wiki/Specs/Summary/1.2.0';
 
 /** @typedef {function(JQuery.AjaxSettings=): JQuery.jqXHR} Ajax */
@@ -17,6 +16,8 @@ const RESTBASE_PROFILE = 'https://www.mediawiki.org/wiki/Specs/Summary/1.2.0';
  *
  * [0]: https://en.wikipedia.org/api/rest_v1/#!/Page_content/get_page_summary_title
  *
+ * @private
+ * @ignore
  * @param {Ajax} ajax A function with the same signature as `jQuery.ajax`
  * @param {Object} config Configuration that affects the major behavior of the
  *  gateway.
@@ -41,7 +42,7 @@ export default function createRESTBaseGateway( ajax, config, extractParser ) {
 		return ajax( {
 			url: endpoint + encodeURIComponent( title ),
 			headers: {
-				Accept: `application/json; charset=utf-8; profile="${RESTBASE_PROFILE}"`,
+				Accept: `application/json; charset=utf-8; profile="${ RESTBASE_PROFILE }"`,
 				'Accept-Language': config.acceptLanguage
 			}
 		} );
@@ -88,7 +89,7 @@ export default function createRESTBaseGateway( ajax, config, extractParser ) {
  * https://www.mediawiki.org/wiki/Help:Images#Supported_media_types_for_images
  *
  * @param {string} filename
- *
+ * @ignore
  * @return {boolean}
  */
 function isSafeImgFormat( filename ) {
@@ -156,7 +157,7 @@ function generateThumbnailData( thumbnail, original, thumbSize ) {
 		return originalIsSafe && original;
 	}
 
-	parts[ parts.length - 1 ] = `${width}px-${filename}`;
+	parts[ parts.length - 1 ] = `${ width }px-${ filename }`;
 
 	return {
 		source: parts.join( '/' ),
@@ -169,6 +170,7 @@ function generateThumbnailData( thumbnail, original, thumbSize ) {
  * Converts the API response to a preview model.
  *
  * @method
+ * @ignore
  * @name RESTBaseGateway#convertPageToModel
  * @param {Object} page
  * @param {number} thumbSize

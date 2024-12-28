@@ -5,30 +5,24 @@ QUnit.module( 'ext.popups#setUserConfigFlags' );
 QUnit.test( 'config settings are successfully set from bitmask', ( assert ) => {
 	const config = new Map();
 
-	config.set( 'wgPopupsFlags', '15' );
+	config.set( 'wgPopupsFlags', '7' );
 	setUserConfigFlags( config );
 
 	assert.deepEqual(
 		[
-			config.get( 'wgPopupsConflictsWithNavPopupGadget' ),
-			config.get( 'wgPopupsConflictsWithRefTooltipsGadget' ),
-			config.get( 'wgPopupsReferencePreviews' ),
-			config.get( 'wgPopupsReferencePreviewsBetaFeature' )
+			config.get( 'wgPopupsConflictsWithNavPopupGadget' )
 		],
-		[ true, true, true, true ]
+		[ true ]
 	);
 
-	config.set( 'wgPopupsFlags', '10' );
+	config.set( 'wgPopupsFlags', '2' );
 	setUserConfigFlags( config );
 
 	assert.deepEqual(
 		[
-			config.get( 'wgPopupsConflictsWithNavPopupGadget' ),
-			config.get( 'wgPopupsConflictsWithRefTooltipsGadget' ),
-			config.get( 'wgPopupsReferencePreviews' ),
-			config.get( 'wgPopupsReferencePreviewsBetaFeature' )
+			config.get( 'wgPopupsConflictsWithNavPopupGadget' )
 		],
-		[ false, true, false, true ]
+		[ false ]
 	);
 
 	config.set( 'wgPopupsFlags', '5' );
@@ -36,12 +30,9 @@ QUnit.test( 'config settings are successfully set from bitmask', ( assert ) => {
 
 	assert.deepEqual(
 		[
-			config.get( 'wgPopupsConflictsWithNavPopupGadget' ),
-			config.get( 'wgPopupsConflictsWithRefTooltipsGadget' ),
-			config.get( 'wgPopupsReferencePreviews' ),
-			config.get( 'wgPopupsReferencePreviewsBetaFeature' )
+			config.get( 'wgPopupsConflictsWithNavPopupGadget' )
 		],
-		[ true, false, true, false ]
+		[ true ]
 	);
 
 	config.set( 'wgPopupsFlags', '0' );
@@ -49,11 +40,8 @@ QUnit.test( 'config settings are successfully set from bitmask', ( assert ) => {
 
 	assert.deepEqual(
 		[
-			config.get( 'wgPopupsConflictsWithNavPopupGadget' ),
-			config.get( 'wgPopupsConflictsWithRefTooltipsGadget' ),
-			config.get( 'wgPopupsReferencePreviews' ),
-			config.get( 'wgPopupsReferencePreviewsBetaFeature' )
+			config.get( 'wgPopupsConflictsWithNavPopupGadget' )
 		],
-		[ false, false, false, false ]
+		[ false ]
 	);
 } );

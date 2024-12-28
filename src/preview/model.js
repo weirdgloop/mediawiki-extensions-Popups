@@ -1,8 +1,11 @@
 /**
  * @module preview/model
+ * @private
  */
 
 import { requiresSummary } from '../ui/renderer';
+
+const selectors = [];
 
 /**
  * Page Preview types as defined in Schema:Popups
@@ -16,9 +19,7 @@ const previewTypes = {
 	/** Standard page preview with or without thumbnail */
 	TYPE_PAGE: 'page',
 	/** Disambiguation page preview */
-	TYPE_DISAMBIGUATION: 'disambiguation',
-	/** Reference preview */
-	TYPE_REFERENCE: 'reference'
+	TYPE_DISAMBIGUATION: 'disambiguation'
 };
 
 export { previewTypes };
@@ -29,8 +30,6 @@ export { previewTypes };
  * @typedef {Object} PreviewModel
  * @property {string} url The canonical URL of the page being previewed
  * @property {string} type One of the previewTypes.TYPE_… constants.
- *
- * @global
  */
 
 /**
@@ -44,8 +43,6 @@ export { previewTypes };
  * @property {string} languageDirection Either "ltr" or "rtl", or an empty string if undefined.
  * @property {{source: string, width: number, height: number}|undefined} thumbnail
  * @property {number} pageId Currently not used by any known popup type.
- *
- * @global
  */
 
 /**
@@ -54,8 +51,6 @@ export { previewTypes };
  * @property {string} extract An HTML snippet, not necessarily with a single top-level node
  * @property {string} referenceType A type identifier, e.g. "web"
  * @property {string} sourceElementId ID of the parent element that triggered the preview
- *
- * @global
  */
 
 /**
@@ -108,7 +103,7 @@ export function createNullModel( title, url ) {
 }
 
 /**
- * @param {Element} element
+ * @param {HTMLElement} element
  * @param {string} selector
  * @return {boolean}
  */
@@ -119,12 +114,15 @@ const elementMatchesSelector = ( element, selector ) => {
 /**
  * Recursively checks the element and its parents.
  *
- * @param {Element} element
- * @return {Element|null}
+ * @param {HTMLElement} element
+ * @return {HTMLElement|null}
  */
 export function findNearestEligibleTarget( element ) {
-	const selector = selectors.join( ', ' );
-	return element.closest( selector );
+	if ( selectors.length ) {
+		const selector = selectors.join( ', ' );
+		return element.closest( selector );
+	}
+	return null;
 }
 
 /**
@@ -142,7 +140,9 @@ const registeredPreviewTypes = [];
  * @return {string|null} One of the previewTypes.TYPE_… constants
  */
 export function getPreviewType( el ) {
-	const candidates = registeredPreviewTypes.filter( ( type ) => elementMatchesSelector( el, type.selector ) );
+	const candidates = registeredPreviewTypes.filter(
+		( type ) => elementMatchesSelector( el, type.selector )
+	);
 
 	// If the filter returned some possibilities, use the last registered one.
 	if ( candidates.length > 0 ) {
@@ -205,8 +205,6 @@ function getPagePreviewType( type, processedExtract ) {
 	}
 }
 
-const selectors = [];
-
 const dwellDelay = {};
 
 /**
@@ -247,15 +245,6 @@ export function registerModel( type, selector, delay ) {
 	if ( delay ) {
 		setDwellTime( type, delay );
 	}
-}
-
-/**
- * Check whether any kind of preview is enabled.
- *
- * @return {boolean}
- */
-export function isAnythingEligible() {
-	return !!selectors.length;
 }
 
 export const test = {

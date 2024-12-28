@@ -19,9 +19,9 @@
  */
 namespace Popups;
 
-use Config;
-use ExtensionRegistry;
+use MediaWiki\Config\Config;
 use MediaWiki\Extension\Gadgets\GadgetRepo;
+use MediaWiki\User\User;
 
 /**
  * Gadgets integration
@@ -32,33 +32,24 @@ class PopupsGadgetsIntegration {
 
 	public const CONFIG_NAVIGATION_POPUPS_NAME = 'PopupsConflictingNavPopupsGadgetName';
 
-	public const CONFIG_REFERENCE_TOOLTIPS_NAME = 'PopupsConflictingRefTooltipsGadgetName';
-
-	/**
-	 * @var \ExtensionRegistry
-	 */
-	private $extensionRegistry;
-
 	/**
 	 * @var string
 	 */
 	private $navPopupsGadgetName;
 
-	/**
-	 * @var string
-	 */
-	private $refTooltipsGadgetName;
+	private ?GadgetRepo $gadgetRepo;
 
 	/**
 	 * @param Config $config MediaWiki configuration
-	 * @param ExtensionRegistry $extensionRegistry MediaWiki extension registry
+	 * @param GadgetRepo|null $gadgetRepo
 	 */
-	public function __construct( Config $config, ExtensionRegistry $extensionRegistry ) {
-		$this->extensionRegistry = $extensionRegistry;
+	public function __construct(
+		Config $config,
+		?GadgetRepo $gadgetRepo
+	) {
 		$this->navPopupsGadgetName = $this->sanitizeGadgetName(
 			$config->get( self::CONFIG_NAVIGATION_POPUPS_NAME ) );
-		$this->refTooltipsGadgetName = $this->sanitizeGadgetName(
-			$config->get( self::CONFIG_REFERENCE_TOOLTIPS_NAME ) );
+		$this->gadgetRepo = $gadgetRepo;
 	}
 
 	/**
@@ -70,26 +61,18 @@ class PopupsGadgetsIntegration {
 	}
 
 	/**
-	 * @return bool
-	 */
-	private function isGadgetExtensionEnabled() {
-		return $this->extensionRegistry->isLoaded( 'Gadgets' );
-	}
-
-	/**
 	 * Check if Popups conflicts with Nav Popups Gadget
 	 * If user enabled Nav Popups, Popups is unavailable
 	 *
-	 * @param \User $user User whose gadget settings are checked
+	 * @param User $user User whose gadget settings are checked
 	 * @return bool
 	 */
-	public function conflictsWithNavPopupsGadget( \User $user ) {
-		if ( $this->isGadgetExtensionEnabled() ) {
-			$gadgetsRepo = GadgetRepo::singleton();
-			$match = array_search( $this->navPopupsGadgetName, $gadgetsRepo->getGadgetIds() );
+	public function conflictsWithNavPopupsGadget( User $user ) {
+		if ( $this->gadgetRepo ) {
+			$match = array_search( $this->navPopupsGadgetName, $this->gadgetRepo->getGadgetIds() );
 			if ( $match !== false ) {
 				try {
-					return $gadgetsRepo->getGadget( $this->navPopupsGadgetName )
+					return $this->gadgetRepo->getGadget( $this->navPopupsGadgetName )
 						->isEnabled( $user );
 				} catch ( \InvalidArgumentException $e ) {
 					return false;
@@ -98,28 +81,4 @@ class PopupsGadgetsIntegration {
 		}
 		return false;
 	}
-
-	/**
-	 * Check if Popups conflicts with Ref Tooltips Gadget
-	 * If user enabled Ref Tooltip, Popups is unavailable
-	 *
-	 * @param \User $user User whose gadget settings are checked
-	 * @return bool
-	 */
-	public function conflictsWithRefTooltipsGadget( \User $user ) {
-		if ( $this->isGadgetExtensionEnabled() ) {
-			$gadgetsRepo = GadgetRepo::singleton();
-			$match = array_search( $this->refTooltipsGadgetName, $gadgetsRepo->getGadgetIds() );
-			if ( $match !== false ) {
-				try {
-					return $gadgetsRepo->getGadget( $this->refTooltipsGadgetName )
-						->isEnabled( $user );
-				} catch ( \InvalidArgumentException $e ) {
-					return false;
-				}
-			}
-		}
-		return false;
-	}
-
 }

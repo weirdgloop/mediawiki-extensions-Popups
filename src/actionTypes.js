@@ -1,10 +1,11 @@
 /**
  * @module actionTypes
+ * @private
  */
-
 export default {
 	BOOT: 'BOOT',
 	LINK_DWELL: 'LINK_DWELL',
+	REGISTER_SETTING: 'REGISTER_SETTING',
 	ABANDON_START: 'ABANDON_START',
 	ABANDON_END: 'ABANDON_END',
 	LINK_CLICK: 'LINK_CLICK',

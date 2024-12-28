@@ -1,8 +1,7 @@
 /**
  * @module changeListeners/syncUserSettings
+ * @private
  */
-
-import { previewTypes } from '../preview/model';
 
 /**
  * Creates an instance of the user settings sync change listener.
@@ -22,14 +21,14 @@ import { previewTypes } from '../preview/model';
  */
 export default function syncUserSettings( userSettings ) {
 	return ( oldState, newState ) => {
-		syncIfChanged(
-			oldState, newState, 'preview.enabled.' + previewTypes.TYPE_PAGE,
-			userSettings.storePagePreviewsEnabled
-		);
-		syncIfChanged(
-			oldState, newState, 'preview.enabled.' + previewTypes.TYPE_REFERENCE,
-			userSettings.storeReferencePreviewsEnabled
-		);
+		Object.keys( newState.preview.enabled ).forEach( ( key ) => {
+			syncIfChanged(
+				oldState, newState, `preview.enabled.${ key }`,
+				( value ) => {
+					userSettings.storePreviewTypeEnabled( key, value );
+				}
+			);
+		} );
 	};
 }
 
@@ -39,7 +38,7 @@ export default function syncUserSettings( userSettings ) {
  *
  * @param {Object} state tree
  * @param {string} path dot-separated path in the state tree
- * @return {*}
+ * @return {any}
  */
 function get( state, path ) {
 	return path.split( '.' ).reduce(
@@ -57,7 +56,6 @@ function get( state, path ) {
  * @param {string} path dot-separated path in the state tree
  * @param {Function} sync function to be called with the newest value if
  * changed
- * @return {void}
  */
 function syncIfChanged( oldState, newState, path, sync ) {
 	const current = get( newState, path );

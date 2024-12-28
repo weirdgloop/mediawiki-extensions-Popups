@@ -1,5 +1,6 @@
 /**
  * @module preview
+ * @private
  */
 
 import { renderPopup } from '../popup/popup';
@@ -27,7 +28,7 @@ const templateHTML = `
  * @param {ext.popups.PagePreviewModel} model
  * @param {string|null} message
  * @param {string} linkMsg
- * @return {JQuery}
+ * @return {jQuery}
  */
 export function renderPreview(
 	model, message, linkMsg
@@ -38,7 +39,7 @@ export function renderPreview(
 	// * popups-icon--preview-unknown
 	// * popups-icon--preview-generic
 	// * popups-icon--preview-disambiguation
-	popup.querySelector( '.popups-icon' ).classList.add( `popups-icon--preview-${model.type}` );
+	popup.querySelector( '.popups-icon' ).classList.add( `popups-icon--preview-${ model.type }` );
 	popup.querySelector( '.mwe-popups-extract' ).setAttribute( 'href', model.url );
 	const messageElement = popup.querySelector( '.mwe-popups-message' );
 	if ( message ) {

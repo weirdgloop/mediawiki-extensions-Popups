@@ -1,4 +1,9 @@
 /**
+ * @module nextState
+ * @private
+ */
+
+/**
  * Creates the next state tree from the current state tree and some updates.
  *
  * N.B. OO.copy doesn't copy Element instances, whereas $.extend does.
@@ -48,7 +53,7 @@ export default function nextState( state, updates ) {
 }
 
 /**
- * @param {*} obj
+ * @param {any} obj
  * @return {boolean}
  */
 function isObject( obj ) {

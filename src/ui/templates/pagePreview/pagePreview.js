@@ -1,5 +1,6 @@
 /**
  * @module pagePreview
+ * @private
  */
 
 import { renderPopup } from '../popup/popup';
@@ -24,7 +25,7 @@ const templateHTML = `
  * @param {ext.popups.Thumbnail|null} thumbnail
  * @param {boolean} withCSSClipPath
  * @param {string} linkTitle
- * @return {Element}
+ * @return {HTMLElement}
  */
 export function renderPagePreview(
 	model, thumbnail, withCSSClipPath, linkTitle
@@ -78,5 +79,5 @@ export { defaultExtractWidth }; // for testing
  *   used for the extract
  */
 export function getExtractWidth( thumbnail ) {
-	return thumbnail && thumbnail.isNarrow ? `${defaultExtractWidth + thumbnail.offset}px` : '';
+	return thumbnail && thumbnail.isNarrow ? `${ defaultExtractWidth + thumbnail.offset }px` : '';
 }

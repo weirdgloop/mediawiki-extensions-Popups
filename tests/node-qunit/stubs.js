@@ -3,9 +3,10 @@
  * instance.
  *
  * @param {boolean} isAnon The return value of the `#isAnon`.
+ * @param {Object|mw.Map} [options]
  * @return {Object}
  */
-export function createStubUser( isAnon ) {
+export function createStubUser( isAnon, options ) {
 	return {
 		getPageviewToken() {
 			return '9876543210';
@@ -21,7 +22,8 @@ export function createStubUser( isAnon ) {
 		},
 		sessionId() {
 			return '0123456789';
-		}
+		},
+		options
 	};
 }
 
@@ -72,7 +74,7 @@ export function createStubTitle( namespace, name, fragment = null ) {
 	return {
 		namespace,
 		getPrefixedDb() {
-			return ( namespace ? `Namespace ${namespace}:` : '' ) + name;
+			return ( namespace ? `Namespace ${ namespace }:` : '' ) + name;
 		},
 		getMainText() {
 			return name;
@@ -81,7 +83,7 @@ export function createStubTitle( namespace, name, fragment = null ) {
 			return namespace;
 		},
 		getUrl() {
-			return `/wiki/${this.getPrefixedDb()}`;
+			return `/wiki/${ this.getPrefixedDb() }`;
 		},
 		getFragment() {
 			return fragment;

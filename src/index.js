@@ -1,12 +1,7 @@
-/**
- * @module popups
- */
-
 import * as Redux from 'redux';
 import * as ReduxThunk from 'redux-thunk';
 
 import createPagePreviewGateway from './gateway/page';
-import createReferenceGateway from './gateway/reference';
 import createUserSettings from './userSettings';
 import createPreviewBehavior from './previewBehavior';
 import createSettingsDialogRenderer from './ui/settingsDialogRenderer';
@@ -14,8 +9,7 @@ import registerChangeListener from './changeListener';
 import createIsPagePreviewsEnabled from './isPagePreviewsEnabled';
 import { fromElement as titleFromElement } from './title';
 import { init as rendererInit, registerPreviewUI, createPagePreview,
-	createDisambiguationPreview,
-	createReferencePreview
+	createDisambiguationPreview
 } from './ui/renderer';
 import createExperiments from './experiments';
 import { isEnabled as isStatsvEnabled } from './instrumentation/statsv';
@@ -24,14 +18,14 @@ import * as actions from './actions';
 import reducers from './reducers';
 import createMediaWikiPopupsObject from './integrations/mwpopups';
 import { previewTypes, getPreviewType,
-	registerModel,
-	isAnythingEligible, findNearestEligibleTarget } from './preview/model';
-import isReferencePreviewsEnabled from './isReferencePreviewsEnabled';
+	registerModel, findNearestEligibleTarget } from './preview/model';
 import setUserConfigFlags from './setUserConfigFlags';
 import { registerGatewayForPreviewType, getGatewayForPreviewType } from './gateway';
-import { initReferencePreviewsInstrumentation } from './instrumentation/referencePreviews';
-import { FETCH_START_DELAY, FETCH_COMPLETE_TARGET_DELAY, FETCH_DELAY_REFERENCE_TYPE } from './constants';
-
+import { FETCH_START_DELAY, FETCH_COMPLETE_TARGET_DELAY } from './constants';
+/**
+ * @module popups
+ * @private
+ */
 const EXCLUDED_LINK_SELECTORS = [
 	'.extiw',
 	// ignore links that point to the same article
@@ -43,6 +37,7 @@ const EXCLUDED_LINK_SELECTORS = [
 	'.mw-cite-backlink a',
 	'.oo-ui-buttonElement-button',
 	'.ve-ce-surface a', // T259889
+	'.ext-discussiontools-init-timestamplink',
 	'.cancelLink a',
 	// T198652: lists to hash fragments are ignored.
 	// Note links that include the path will still trigger a hover,
@@ -61,8 +56,6 @@ const EXCLUDED_LINK_SELECTORS = [
  *
  * @param {string} topic
  * @param {Object} data
- *
- * @global
  */
 
 /**
@@ -107,7 +100,6 @@ function getPageviewTracker( config ) {
  * @param {PreviewBehavior} previewBehavior
  * @param {EventTracker} statsvTracker
  * @param {EventTracker} pageviewTracker
- * @return {void}
  */
 function registerChangeListeners(
 	store, registerActions, userSettings, settingsDialog, previewBehavior,
@@ -155,7 +147,7 @@ function handleDOMEventIfEligible( handler ) {
 		// If the closest method is not defined, let's return early and
 		// understand this better by logging an error. (T340081)
 		if ( target && !target.closest ) {
-			const err = new Error( `T340081: Unexpected DOM element ${target.tagName} with nodeType ${target.nodeType}` );
+			const err = new Error( `T340081: Unexpected DOM element ${ target.tagName } with nodeType ${ target.nodeType }` );
 			mw.errorLogger.logError( err, 'error.web-team' );
 			return;
 		}
@@ -189,18 +181,12 @@ function handleDOMEventIfEligible( handler ) {
 		// So-called "services".
 		generateToken = mw.user.generateRandomSessionId,
 		pagePreviewGateway = createPagePreviewGateway( mw.config ),
-		referenceGateway = createReferenceGateway(),
 		userSettings = createUserSettings( mw.storage ),
-		referencePreviewsState = isReferencePreviewsEnabled( mw.user, userSettings, mw.config ),
-		settingsDialog = createSettingsDialogRenderer( referencePreviewsState !== null ),
+		settingsDialog = createSettingsDialogRenderer(),
 		experiments = createExperiments( mw.experiments ),
 		statsvTracker = getStatsvTracker( mw.user, mw.config, experiments ),
 		pageviewTracker = getPageviewTracker( mw.config ),
-		initiallyEnabled = {
-			[ previewTypes.TYPE_PAGE ]:
-				createIsPagePreviewsEnabled( mw.user, userSettings, mw.config ),
-			[ previewTypes.TYPE_REFERENCE ]: referencePreviewsState
-		};
+		pagePreviewState = createIsPagePreviewsEnabled( mw.user, userSettings, mw.config );
 
 	// If debug mode is enabled, then enable Redux DevTools.
 	if ( mw.config.get( 'debug' ) ||
@@ -225,7 +211,7 @@ function handleDOMEventIfEligible( handler ) {
 	);
 
 	boundActions.boot(
-		initiallyEnabled,
+		{},
 		mw.user,
 		userSettings,
 		mw.config,
@@ -237,15 +223,20 @@ function handleDOMEventIfEligible( handler ) {
 	 * extensions can query it (T171287)
 	 */
 	mw.popups = createMediaWikiPopupsObject(
-		store, registerModel, registerPreviewUI, registerGatewayForPreviewType
+		store, registerModel, registerPreviewUI, registerGatewayForPreviewType,
+		boundActions.registerSetting, userSettings
 	);
 
-	if ( initiallyEnabled[ previewTypes.TYPE_PAGE ] !== null ) {
+	// Migrate any old preferences to new system.
+	// FIXME: This can be removed in 4 weeks time.
+	userSettings.migrateOldPreferences();
+
+	if ( pagePreviewState !== null ) {
 		const excludedLinksSelector = EXCLUDED_LINK_SELECTORS.join( ', ' );
 		// Register default preview type
 		mw.popups.register( {
 			type: previewTypes.TYPE_PAGE,
-			selector: `#mw-content-text a[href][title]:not(${excludedLinksSelector})`,
+			selector: `#mw-content-text a[href][title]:not(${ excludedLinksSelector })`,
 			delay: FETCH_COMPLETE_TARGET_DELAY - FETCH_START_DELAY,
 			gateway: pagePreviewGateway,
 			renderFn: createPagePreview,
@@ -257,23 +248,6 @@ function handleDOMEventIfEligible( handler ) {
 				}
 			]
 		} );
-	}
-	if ( initiallyEnabled[ previewTypes.TYPE_REFERENCE ] !== null ) {
-		// Register the reference preview type
-		mw.popups.register( {
-			type: previewTypes.TYPE_REFERENCE,
-			selector: '#mw-content-text .reference a[ href*="#" ]',
-			delay: FETCH_DELAY_REFERENCE_TYPE,
-			gateway: referenceGateway,
-			renderFn: createReferencePreview,
-			init: () => {
-				initReferencePreviewsInstrumentation();
-			}
-		} );
-	}
-	if ( !isAnythingEligible() ) {
-		mw.log.warn( 'ext.popups was loaded but everything is disabled' );
-		return;
 	}
 
 	rendererInit();

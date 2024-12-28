@@ -1,4 +1,5 @@
-/* eslint-env node */
+'use strict';
+
 const { CleanWebpackPlugin } = require( 'clean-webpack-plugin' );
 const path = require( 'path' );
 
@@ -27,7 +28,9 @@ module.exports = ( env, argv ) => ( {
 	// working directory.
 	context: __dirname,
 
-	entry: { index: './src' },
+	entry: {
+		index: './src'
+	},
 
 	resolve: {
 		alias: {
@@ -94,9 +97,9 @@ module.exports = ( env, argv ) => ( {
 
 		// Rename source map extensions. Per T173491 files with a .map extension cannot be served
 		// from prod.
-		sourceMapFilename: `[file]${srcMapExt}`,
+		sourceMapFilename: `[file]${ srcMapExt }`,
 
-		devtoolModuleFilenameTemplate: `${PUBLIC_PATH}/[resource-path]`
+		devtoolModuleFilenameTemplate: `${ PUBLIC_PATH }/[resource-path]`
 	},
 
 	// Accurate source maps at the expense of build time. The source map is intentionally exposed
@@ -118,8 +121,8 @@ module.exports = ( env, argv ) => ( {
 		// Minified uncompressed size limits for chunks / assets and entrypoints. Keep these numbers
 		// up-to-date and rounded to the nearest 10th of a kibibyte so that code sizing costs are
 		// well understood. Related to bundlesize minified, gzipped compressed file size tests.
-		maxAssetSize: 47.1 * 1024,
-		maxEntrypointSize: 47.1 * 1024,
+		maxAssetSize: 40.0 * 1024,
+		maxEntrypointSize: 40.0 * 1024,
 
 		// The default filter excludes map files but we rename ours.
 		assetFilter: ( filename ) => !filename.endsWith( srcMapExt )

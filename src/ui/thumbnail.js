@@ -1,5 +1,6 @@
 /**
  * @module thumbnail
+ * @private
  */
 
 import constants from '../constants';
@@ -17,7 +18,7 @@ export const SIZES = {
 
 /**
  * @typedef {Object} ext.popups.Thumbnail
- * @property {JQuery} el
+ * @property {jQuery} el
  * @property {boolean} isTall Whether or not the thumbnail is portrait
  * @property {number} width
  * @property {number} height
@@ -130,7 +131,7 @@ function createThumbnailImg( url ) {
  * Sets multiple attributes on a node.
  *
  * @param {HTMLElement} node
- * @param {Record<String, String>} attrs
+ * @param {Record<string, string>} attrs
  */
 const addAttributes = ( node, attrs ) => {
 	Object.keys( attrs ).forEach( ( key ) => {

@@ -1,11 +1,6 @@
 /**
  * @module experiments
- */
-
-/**
- * @interface Experiments
- *
- * @global
+ * @private
  */
 
 /**

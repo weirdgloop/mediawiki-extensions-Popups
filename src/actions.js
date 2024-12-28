@@ -1,12 +1,11 @@
-/**
- * @module actions
- */
-
 import types from './actionTypes';
 import wait from './wait';
 import { createNullModel, previewTypes, getDwellDelay } from './preview/model';
 import { FETCH_START_DELAY, PREVIEW_SEEN_DURATION, ABANDON_END_DELAY } from './constants';
-
+/**
+ * @module actions
+ * @private
+ */
 /**
  * Mixes in timing information to an action.
  *
@@ -36,7 +35,7 @@ function timedAction( baseAction ) {
  *
  * @param {Object} initiallyEnabled Allows to disable individual popup types while still showing the
  *  footer link
- * @param {mw.user} user
+ * @param {mw.User} user
  * @param {ext.popups.UserSettings} userSettings
  * @param {mw.Map} config The config of the MediaWiki client-side application,
  *  i.e. `mw.config`
@@ -72,8 +71,25 @@ export function boot(
 }
 
 /**
+ * Registers a page preview setting for anonymous users.
+ *
+ * @param {string} name setting name which is used for storage and deriving associated
+ *  messages.
+ * @param {boolean} enabled is the feature enabled by default?
+ * @return {Object}
+ */
+export function registerSetting( name, enabled ) {
+	return {
+		type: types.REGISTER_SETTING,
+		name,
+		enabled
+	};
+}
+
+/**
  * Represents Page Previews fetching data via the gateway.
  *
+ * @private
  * @param {Gateway} gateway
  * @param {mw.Title} title
  * @param {HTMLAnchorElement} el
@@ -172,6 +188,7 @@ export function fetch( gateway, title, el, token, type ) {
  * Represents the user dwelling on a link, either by hovering over it with
  * their mouse or by focussing it using their keyboard or an assistive device.
  *
+ * @private
  * @param {mw.Title} title
  * @param {HTMLAnchorElement} el
  * @param {ext.popups.Measures} measures
@@ -212,15 +229,14 @@ export function linkDwell( title, el, measures, gateway, generateToken, type ) {
 		return promise.then( () => {
 			const previewState = getState().preview;
 			const enabledValue = previewState.enabled[ type ];
-			// Note: Only reference previews and default previews can be disabled at this point.
 			// If there is no UI the enabledValue is always true.
 			const isEnabled = typeof enabledValue === 'undefined' ? true : enabledValue;
 
 			// The `enabled` flags allow to disable individual popup types while still showing the
 			// footer link. This comes from the boot() action (called `initiallyEnabled` there) and
 			// the preview() reducer.
-			// If the preview type has not been enabled, we ignore it as it cannot be disabled (currently)
-			// by the UI.
+			// If the preview type has not been enabled, we ignore it as it cannot be disabled
+			// (currently) by the UI.
 			if ( isEnabled && isNewInteraction() ) {
 				return dispatch( fetch( gateway, title, el, token, type ) );
 			}
@@ -234,6 +250,7 @@ export function linkDwell( title, el, measures, gateway, generateToken, type ) {
  * an assistive device, or abandoning a preview by moving their mouse away
  * from it.
  *
+ * @private
  * @return {Redux.Thunk}
  */
 export function abandon() {
@@ -386,6 +403,7 @@ export function hideSettings() {
  * See docs/adr/0003-keep-enabled-state-only-in-preview-reducer.md for more
  * details.
  *
+ * @private
  * @param {Object} enabled Mapping preview type identifiers to boolean flags
  * @return {Redux.Thunk}
  */
